@@ -1,34 +1,8 @@
 # my-agy-statusline
 
-A statusline for the [Google Antigravity CLI](https://github.com/google-antigravity/antigravity-cli) (`agy`). It combines the rolling quota tracking from [Ranteck/agy-statusline](https://github.com/Ranteck/agy-statusline) with the agent metrics and state indicators from the [official example](https://github.com/google-antigravity/antigravity-cli/tree/main/examples/statusline), then adds a few things neither has: responsive layout tiers, smart auto-hiding, and plan tier display.
+A statusline for the [Google Antigravity CLI](https://github.com/google-antigravity/antigravity-cli) (`agy`). It combines the rolling quota tracking from [Ranteck/agy-statusline](https://github.com/Ranteck/agy-statusline) with the agent metrics and state indicators from the [official example](https://github.com/google-antigravity/antigravity-cli/tree/main/examples/statusline), then adds responsive layout tiers, smart auto-hiding, and plan tier display.
 
 No Python, no Node. Just a PowerShell script on Windows and a bash script everywhere else.
-
----
-
-## Screenshots
-
-> **To capture these:** open a terminal at the width shown, run `agy`, and screenshot the prompt.
-
-**Wide terminal (>= 120 columns):** everything on one line.
-
-<!-- screenshot: wide layout -->
-<!-- terminal width: 120+ columns, any active session -->
-
-**Medium terminal (>= 100 columns):** two-line box layout.
-
-<!-- screenshot: medium layout -->
-<!-- terminal width: 100–119 columns, any active session -->
-
-**Narrow terminal (< 100 columns):** four-line split layout.
-
-<!-- screenshot: narrow layout -->
-<!-- terminal width: 70–99 columns, active session with artifacts/subagents -->
-
-**Tool use state:**
-
-<!-- screenshot: tool_use state -->
-<!-- trigger: start a session and use any tool -->
 
 ---
 
@@ -36,32 +10,47 @@ No Python, no Node. Just a PowerShell script on Windows and a bash script everyw
 
 The script reads `terminal_width` from the agy payload and picks a layout automatically.
 
-**Wide (>= 120 cols)**
+### Wide (>= 120 columns)
+
+Everything on one line, quotas below.
+
+![Wide layout](assets/wide-statusline.png)
+
 ```
-⚙ WORKING / Gemini 2.5 Pro / my-project (main*)  │  ctx ████░·········· 30.0% · artifacts 2 · subagents 1
+● READY / Gemini 3.5 Flash (Low) / my-agy-statusline (main*)  │  ctx ░·············· 14.3% · artifacts 13
 plan: Google AI Pro
-gemini 5h ●●●○○○○○○○  28%  ⟳ 18:00
-gemini 7d ●●○○○○○○○○  15%  ⟳ jul 11, 08:00
+gemini 5h ○○○○○○○○○○   0% ⟳ 21:22
+gemini 7d ●●○○○○○○○○  19% ⟳ jul 7, 19:51
 ```
 
-**Medium (>= 100 cols)**
+### Medium (>= 100 columns)
+
+Two-line box layout.
+
+![Medium layout](assets/medium-statusline.png)
+
 ```
-╭─ ⚙ WORKING / Gemini 2.5 Pro / my-project (main*)
-╰─ ctx ████░·········· 30.0% · artifacts 2 · subagents 1
+╭─ ● READY / Claude Sonnet 4.6 (Thinking) / my-agy-statusline (main*)
+╰─ ctx ████████·····  60.0% · artifacts 13
 plan: Google AI Pro
-gemini 5h ●●●○○○○○○○  28%  ⟳ 18:00
-gemini 7d ●●○○○○○○○○  15%  ⟳ jul 11, 08:00
+claude 5h ●●●●●●●○○○  65% ⟳ 20:35
+claude 7d ●●○○○○○○○○  22% ⟳ jul 11, 15:35
 ```
 
-**Narrow (< 100 cols)**
+### Narrow (< 100 columns)
+
+Four-line split — state and model on the first line, branch on the second, context bar on the third, stats on the fourth.
+
+![Narrow layout](assets/narrow-statusline.png)
+
 ```
-╭─ ⚙ WORKING / Gemini 2.5 Pro
-├─ my-project (main*)
-├─ ctx ████░·········· 30.0%
-╰─ artifacts 2 · subagents 1 · tasks 0 · sandbox ON
+╭─ ● READY / Gemini 3.1 Pro (High)
+├─ my-agy-statusline (main)
+├─ ctx ░·············  14.3%
+╰─ artifacts 13
 plan: Google AI Pro
-gemini 5h ●●●○○○○○○○  28%  ⟳ 18:00
-gemini 7d ●●○○○○○○○○  15%  ⟳ jul 11, 08:00
+gemini 5h ○○○○○○○○○○   0% ⟳ 21:22
+gemini 7d ●●○○○○○○○○  19% ⟳ jul 7, 19:51
 ```
 
 ---
@@ -76,25 +65,35 @@ gemini 7d ●●○○○○○○○○  15%  ⟳ jul 11, 08:00
 | tool use | `🔧 TOOL` |
 | other | `⏳ <STATE>` |
 
+![Tool use state](assets/tool-use-statusline.png)
+
 ---
 
 ## Installation
 
-**Windows (PowerShell)**
-
-```powershell
-powershell -NoProfile -File ./bin/install.ps1
-```
-
-Copies the script to `~/.gemini/statusline.ps1` and updates `~/.gemini/antigravity-cli/settings.json`.
-
-**macOS / Linux (bash)**
+**1. Clone the repo**
 
 ```bash
-bash ./bin/install.sh
+git clone https://github.com/dersual/my-agy-statusline.git
+cd my-agy-statusline
 ```
 
-Copies the script to `~/.gemini/statusline.sh` and updates `~/.gemini/antigravity-cli/settings.json`.
+**2. Run the installer**
+
+On Windows (from PowerShell):
+
+```powershell
+./bin/install.ps1
+```
+
+On macOS / Linux:
+
+```bash
+chmod +x bin/install.sh
+./bin/install.sh
+```
+
+Both scripts copy the statusline to `~/.gemini/` and update `~/.gemini/antigravity-cli/settings.json` to point to it. Restart `agy` after installing.
 
 ---
 
