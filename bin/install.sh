@@ -11,6 +11,13 @@ SETTINGS_FILE="$GEMINI_DIR/antigravity-cli/settings.json"
 
 echo "Installing Unified AGY Statusline..."
 
+# Precondition check: verify jq is installed since it is required by both the installer and statusline script
+if ! command -v jq &>/dev/null; then
+    echo "Error: 'jq' is not installed. It is required to install and run the Unified AGY Statusline."
+    echo "Please install jq using your package manager (e.g., 'brew install jq' on macOS or 'sudo apt install jq' on Debian/Ubuntu) and try again."
+    exit 1
+fi
+
 # 1. Create .gemini directory if it doesn't exist
 mkdir -p "$GEMINI_DIR"
 echo "Ensured directory exists: $GEMINI_DIR"

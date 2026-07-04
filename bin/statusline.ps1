@@ -22,6 +22,17 @@ $charLine        = [char]0x2500
 $charCornerBot   = [char]0x2570
 $charReset       = [char]0x27f3
 
+# ─── Configuration Constants ──────────────────────────────────────────────────
+$CONFIG_LAYOUT_WIDE_COLS = 120
+$CONFIG_LAYOUT_MED_COLS  = 80
+$CONFIG_BAR_LEN_CTX      = 15
+$CONFIG_BAR_LEN_QUOTA    = 10
+$CONFIG_CTX_WARN_PCT     = 60
+$CONFIG_CTX_CRIT_PCT     = 90
+$CONFIG_QUOTA_INFO_PCT   = 50
+$CONFIG_QUOTA_WARN_PCT   = 70
+$CONFIG_QUOTA_CRIT_PCT   = 90
+
 # ─── Read Stdin ─────────────────────────────────────────────────────────────
 $jsonText = [Console]::In.ReadToEnd()
 if ([string]::IsNullOrWhiteSpace($jsonText)) {
@@ -134,35 +145,35 @@ if ([string]::IsNullOrEmpty($dirName)) {
 }
 
 # ─── LINE 1: State, Model, VCS Branch, Plan ──────────────────────────────────
-$S = ""
+$agentStateBadge = ""
 if ($config.show_state_indicator) {
     switch ($state) {
-        "idle"     { $S = "$FG_BRIGHT_GREEN$B$charCircleFull READY$R" }
-        "thinking" { $S = "$FG_BRIGHT_YELLOW$B$charDiamond THINKING$R" }
-        "working"  { $S = "$FG_BRIGHT_CYAN$B$charGear WORKING$R" }
-        "tool_use" { $S = "$FG_BRIGHT_MAGENTA$B$charWrench TOOL$R" }
-        default    { $S = "$FG_WHITE$B$charHourglass $($state.ToUpper())$R" }
+        "idle"     { $agentStateBadge = "$FG_BRIGHT_GREEN$B$charCircleFull READY$R" }
+        "thinking" { $agentStateBadge = "$FG_BRIGHT_YELLOW$B$charDiamond THINKING$R" }
+        "working"  { $agentStateBadge = "$FG_BRIGHT_CYAN$B$charGear WORKING$R" }
+        "tool_use" { $agentStateBadge = "$FG_BRIGHT_MAGENTA$B$charWrench TOOL$R" }
+        default    { $agentStateBadge = "$FG_WHITE$B$charHourglass $($state.ToUpper())$R" }
     }
 }
 
-$DBlock = "$FG_BRIGHT_CYAN$dirName$R"
+$gitDirStatusBadge = "$FG_BRIGHT_CYAN$dirName$R"
 if (-not [string]::IsNullOrEmpty($vcsBranch)) {
     if ($vcsDirty) {
-        $DBlock += " $FG_BRIGHT_GREEN($FG_BRIGHT_RED$vcsBranch$FG_BRIGHT_YELLOW*$FG_BRIGHT_GREEN)$R"
+        $gitDirStatusBadge += " $FG_BRIGHT_GREEN($FG_BRIGHT_RED$vcsBranch$FG_BRIGHT_YELLOW*$FG_BRIGHT_GREEN)$R"
     } else {
-        $DBlock += " $FG_BRIGHT_GREEN($FG_BRIGHT_BLUE$vcsBranch$FG_BRIGHT_GREEN)$R"
+        $gitDirStatusBadge += " $FG_BRIGHT_GREEN($FG_BRIGHT_BLUE$vcsBranch$FG_BRIGHT_GREEN)$R"
     }
 }
 
 $parts = [System.Collections.Generic.List[string]]::new()
-if (-not [string]::IsNullOrEmpty($S)) {
-    $parts.Add($S)
+if (-not [string]::IsNullOrEmpty($agentStateBadge)) {
+    $parts.Add($agentStateBadge)
 }
 if (-not [string]::IsNullOrEmpty($modelDisplayName)) {
     $parts.Add("$FG_BRIGHT_MAGENTA$I$modelDisplayName$R")
 }
-if (-not [string]::IsNullOrEmpty($DBlock)) {
-    $parts.Add($DBlock)
+if (-not [string]::IsNullOrEmpty($gitDirStatusBadge)) {
+    $parts.Add($gitDirStatusBadge)
 }
 if (-not [string]::IsNullOrEmpty($planTier) -and $planTier -ne "null") {
     $parts.Add("$FG_GRAY$planTier$R")
@@ -171,19 +182,18 @@ if (-not [string]::IsNullOrEmpty($planTier) -and $planTier -ne "null") {
 $LINE1 = [string]::Join("$FG_GRAY $charSlash $R", $parts)
 
 # ─── LINE 2: Context Bar & Stats ─────────────────────────────────────────────
-$barLen = 15
-$filled = [int][Math]::Floor(($usedPct * $barLen) / 100)
-$remainder = ($usedPct * $barLen) % 100
+$filled = [int][Math]::Floor(($usedPct * $CONFIG_BAR_LEN_CTX) / 100)
+$remainder = ($usedPct * $CONFIG_BAR_LEN_CTX) % 100
 
 $barColor = $FG_BRIGHT_WHITE
-if ($usedPct -ge 90) {
+if ($usedPct -ge $CONFIG_CTX_CRIT_PCT) {
     $barColor = $FG_BRIGHT_RED
-} elseif ($usedPct -ge 60) {
+} elseif ($usedPct -ge $CONFIG_CTX_WARN_PCT) {
     $barColor = $FG_BRIGHT_YELLOW
 }
 
 $bar = ""
-for ($i = 0; $i -lt $barLen; $i++) {
+for ($i = 0; $i -lt $CONFIG_BAR_LEN_CTX; $i++) {
     if ($i -lt $filled) {
         $bar += $charBlockFull
     } elseif ($i -eq $filled) {
@@ -197,10 +207,10 @@ for ($i = 0; $i -lt $barLen; $i++) {
 }
 
 $pctFmt = $usedPct.ToString("F1", [System.Globalization.CultureInfo]::InvariantCulture)
-$CTX = "${FG_GRAY}ctx $barColor$bar $NUM_COLOR$pctFmt%$R"
+$contextBarBadge = "${FG_GRAY}ctx $barColor$bar $NUM_COLOR$pctFmt%$R"
 
 $statParts = [System.Collections.Generic.List[string]]::new()
-$statParts.Add($CTX)
+$statParts.Add($contextBarBadge)
 
 if ($config.show_additional_stats) {
     if (-not $config.hide_zero_stats -or $artifactCount -gt 0) {
@@ -225,19 +235,56 @@ $LINE2 = " " + [string]::Join("$FG_GRAY $charDot $R", $statParts)
 function Get-QuotaBar {
     param(
         [double]$pct,
-        [int]$width = 10
+        [int]$width = $CONFIG_BAR_LEN_QUOTA
     )
     $filled = [int][Math]::Round(($pct * $width) / 100)
     $empty = $width - $filled
     
     $barColor = $FG_BRIGHT_GREEN
-    if ($pct -ge 90) { $barColor = $FG_BRIGHT_RED }
-    elseif ($pct -ge 70) { $barColor = $FG_BRIGHT_YELLOW }
-    elseif ($pct -ge 50) { $barColor = $FG_BRIGHT_CYAN }
+    if ($pct -ge $CONFIG_QUOTA_CRIT_PCT) { $barColor = $FG_BRIGHT_RED }
+    elseif ($pct -ge $CONFIG_QUOTA_WARN_PCT) { $barColor = $FG_BRIGHT_YELLOW }
+    elseif ($pct -ge $CONFIG_QUOTA_INFO_PCT) { $barColor = $FG_BRIGHT_CYAN }
     
     $fStr = [string]::new($charCircleFull, $filled)
     $eStr = [string]::new($charCircleEmpty, $empty)
     return "$barColor$fStr$FG_GRAY$eStr$R"
+}
+
+function Get-QuotaLine {
+    param(
+        [string]$label,
+        $quotaData,
+        [string]$timeFormat
+    )
+    if ($null -eq $quotaData) { return $null }
+
+    $remaining = 1.0
+    if ($null -ne $quotaData.remaining_fraction) {
+        $remaining = [double]$quotaData.remaining_fraction
+    }
+    $pct = [int][Math]::Round((1.0 - $remaining) * 100)
+    $pct = [Math]::Max(0, [Math]::Min(100, $pct))
+    
+    $qBar = Get-QuotaBar -pct $pct
+    $pctFmt = "{0,3}" -f $pct
+    
+    $resetIso = if ($null -ne $quotaData.reset_time) { $quotaData.reset_time.ToString() } else { "" }
+    $resetFmt = ""
+    if (-not [string]::IsNullOrEmpty($resetIso) -and $resetIso -ne "null") {
+        try {
+            $dateTime = [DateTimeOffset]::Parse($resetIso)
+            $localTime = $dateTime.LocalDateTime
+            $timeStr = $localTime.ToString($timeFormat).ToLower()
+            $resetFmt = " $FG_GRAY$charReset$R $FG_WHITE$timeStr$R"
+        } catch {}
+    }
+    
+    $pColor = $FG_BRIGHT_GREEN
+    if ($pct -ge $CONFIG_QUOTA_CRIT_PCT) { $pColor = $FG_BRIGHT_RED }
+    elseif ($pct -ge $CONFIG_QUOTA_WARN_PCT) { $pColor = $FG_BRIGHT_YELLOW }
+    elseif ($pct -ge $CONFIG_QUOTA_INFO_PCT) { $pColor = $FG_BRIGHT_CYAN }
+    
+    return "$FG_WHITE$label$R $qBar $pColor$pctFmt%$R$resetFmt"
 }
 
 $quotaLines = [System.Collections.Generic.List[string]]::new()
@@ -254,73 +301,19 @@ if ($config.show_quota -and $null -ne $data.quota) {
     $poolLabel = if ($quotaPool -eq "3p") { "claude" } else { "gemini" }
 
     # 5h Quota
-    $q5h = $data.quota.$q5hKey
-    if ($null -ne $q5h) {
-        $remaining = 1.0
-        if ($null -ne $q5h.remaining_fraction) {
-            $remaining = [double]$q5h.remaining_fraction
-        }
-        $pct = [int][Math]::Round((1.0 - $remaining) * 100)
-        $pct = [Math]::Max(0, [Math]::Min(100, $pct))
-        
-        $qBar = Get-QuotaBar -pct $pct
-        $pctFmt = "{0,3}" -f $pct
-        
-        $resetIso = if ($null -ne $q5h.reset_time) { $q5h.reset_time.ToString() } else { "" }
-        $resetFmt = ""
-        if (-not [string]::IsNullOrEmpty($resetIso) -and $resetIso -ne "null") {
-            try {
-                $dateTime = [DateTimeOffset]::Parse($resetIso)
-                $localTime = $dateTime.LocalDateTime
-                $resetFmt = " $FG_GRAY$charReset$R $FG_WHITE$($localTime.ToString("HH:mm"))$R"
-            } catch {}
-        }
-        
-        $pColor = $FG_BRIGHT_GREEN
-        if ($pct -ge 90) { $pColor = $FG_BRIGHT_RED }
-        elseif ($pct -ge 70) { $pColor = $FG_BRIGHT_YELLOW }
-        elseif ($pct -ge 50) { $pColor = $FG_BRIGHT_CYAN }
-        
-        $quotaLines.Add("$FG_WHITE$poolLabel 5h$R $qBar $pColor$pctFmt%$R$resetFmt")
-    }
+    $line5h = Get-QuotaLine -label "$poolLabel 5h" -quotaData $data.quota.$q5hKey -timeFormat "HH:mm"
+    if ($null -ne $line5h) { $quotaLines.Add($line5h) }
 
     # Weekly Quota
-    $qwk = $data.quota.$qwkKey
-    if ($null -ne $qwk) {
-        $remaining = 1.0
-        if ($null -ne $qwk.remaining_fraction) {
-            $remaining = [double]$qwk.remaining_fraction
-        }
-        $pct = [int][Math]::Round((1.0 - $remaining) * 100)
-        $pct = [Math]::Max(0, [Math]::Min(100, $pct))
-        
-        $qBar = Get-QuotaBar -pct $pct
-        $pctFmt = "{0,3}" -f $pct
-        
-        $resetIso = if ($null -ne $qwk.reset_time) { $qwk.reset_time.ToString() } else { "" }
-        $resetFmt = ""
-        if (-not [string]::IsNullOrEmpty($resetIso) -and $resetIso -ne "null") {
-            try {
-                $dateTime = [DateTimeOffset]::Parse($resetIso)
-                $localTime = $dateTime.LocalDateTime
-                $resetFmt = " $FG_GRAY$charReset$R $FG_WHITE$($localTime.ToString("MMM d, HH:mm").ToLower())$R"
-            } catch {}
-        }
-        
-        $pColor = $FG_BRIGHT_GREEN
-        if ($pct -ge 90) { $pColor = $FG_BRIGHT_RED }
-        elseif ($pct -ge 70) { $pColor = $FG_BRIGHT_YELLOW }
-        elseif ($pct -ge 50) { $pColor = $FG_BRIGHT_CYAN }
-        
-        $quotaLines.Add("$FG_WHITE$poolLabel 7d$R $qBar $pColor$pctFmt%$R$resetFmt")
-    }
+    $lineWk = Get-QuotaLine -label "$poolLabel 7d" -quotaData $data.quota.$qwkKey -timeFormat "MMM d, HH:mm"
+    if ($null -ne $lineWk) { $quotaLines.Add($lineWk) }
 }
 
 # ─── Render Layout Based on Terminal Width ───────────────────────────────────
-if ($cols -ge 120) {
+if ($cols -ge $CONFIG_LAYOUT_WIDE_COLS) {
     # Wide layout: everything on one line, quotas below
     Write-Output "$LINE1$FG_GRAY  $charPipe  $R$LINE2"
-} elseif ($cols -ge 80) {
+} elseif ($cols -ge $CONFIG_LAYOUT_MED_COLS) {
     # Medium layout: two lines with box border characters
     Write-Output "$FG_GRAY$charCornerTop$charLine$R $LINE1"
     Write-Output "$FG_GRAY$charCornerBot$charLine$R$LINE2"
