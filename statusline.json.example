@@ -1,0 +1,13 @@
+{
+  // Toggle the display of the 5-hour and 7-day rolling quotas
+  "show_quota": true,
+
+  // Master toggle for artifacts, subagents, background tasks, and sandbox status
+  "show_additional_stats": true,
+
+  // If true, stats (artifacts, subagents, tasks) are hidden when their count is 0
+  "hide_zero_stats": true,
+
+  // Toggle the state indicator badge (e.g. READY, THINKING, WORKING, TOOL)
+  "show_state_indicator": true
+}
