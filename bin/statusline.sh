@@ -57,6 +57,18 @@ fi
   ' <<< "$input" 2>/dev/null || printf "idle\n0\n\nfalse\nfalse\n0\n0\n0\n\n\n\n80\n\nnull\nnull\nnull\nnull\nnull\nnull\nnull\nnull\n"
 )"
 
+# ─── Configuration Constants ──────────────────────────────────────────────────
+CONFIG_LAYOUT_WIDE_COLS=120
+CONFIG_LAYOUT_MED_COLS=100
+CONFIG_BAR_LEN_CTX=15
+charSlash="/"
+CONFIG_BAR_LEN_QUOTA=10
+CONFIG_CTX_WARN_PCT=60
+CONFIG_CTX_CRIT_PCT=90
+CONFIG_QUOTA_INFO_PCT=50
+CONFIG_QUOTA_WARN_PCT=70
+CONFIG_QUOTA_CRIT_PCT=90
+
 # ─── Configuration Loader (Optional ~/.gemini/statusline.json) ───────────────
 CONFIG_PATH="$HOME/.gemini/statusline.json"
 show_quota=true
@@ -101,12 +113,28 @@ if [ -z "$CWD" ] || [ "$CWD" = "null" ]; then
 fi
 DIRNAME=$(basename "$CWD")
 
+# ─── Fallback Git Branch Detection ───────────────────────────────────────────
+if [ -z "$VCS_BRANCH" ] || [ "$VCS_BRANCH" = "null" ]; then
+    if [ -n "$CWD" ] && [ -d "$CWD" ]; then
+        git_branch=$(git -C "$CWD" branch --show-current 2>/dev/null)
+        if [ -n "$git_branch" ]; then
+            VCS_BRANCH="$git_branch"
+            git_status=$(git -C "$CWD" status --porcelain 2>/dev/null)
+            if [ -n "$git_status" ]; then
+                VCS_DIRTY="true"
+            else
+                VCS_DIRTY="false"
+            fi
+        fi
+    fi
+fi
+
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 color_for_pct() {
     local pct=$1
-    if [ "$pct" -ge 90 ]; then printf "%b" "$FG_BRIGHT_RED"
-    elif [ "$pct" -ge 70 ]; then printf "%b" "$FG_BRIGHT_YELLOW"
-    elif [ "$pct" -ge 50 ]; then printf "%b" "$FG_BRIGHT_CYAN"
+    if [ "$pct" -ge "$CONFIG_QUOTA_CRIT_PCT" ]; then printf "%b" "$FG_BRIGHT_RED"
+    elif [ "$pct" -ge "$CONFIG_QUOTA_WARN_PCT" ]; then printf "%b" "$FG_BRIGHT_YELLOW"
+    elif [ "$pct" -ge "$CONFIG_QUOTA_INFO_PCT" ]; then printf "%b" "$FG_BRIGHT_CYAN"
     else printf "%b" "$FG_BRIGHT_GREEN"
     fi
 }
@@ -165,6 +193,35 @@ format_reset_time() {
     printf "%s" "$result"
 }
 
+format_quota_line() {
+    local label="$1"
+    local rem="$2"
+    local reset="$3"
+    local style="$4"
+
+    if [ -z "$rem" ] || [ "$rem" = "null" ]; then
+        return 1
+    fi
+
+    local pct
+    pct=$(echo "$rem" | awk '{printf "%.0f", (1 - $1) * 100}' 2>/dev/null || echo 0)
+    local qBar
+    qBar=$(build_quota_bar "$pct" "$CONFIG_BAR_LEN_QUOTA")
+    local pct_fmt
+    pct_fmt=$(printf "%3d" "$pct")
+    local reset_fmt
+    reset_fmt=$(format_reset_time "$reset" "$style")
+    local pColor
+    pColor=$(color_for_pct "$pct")
+    
+    local line="${FG_WHITE}${label}${R} ${qBar} ${pColor}${pct_fmt}%${R}"
+    if [ -n "$reset_fmt" ]; then
+        line+=" ${FG_GRAY}⟳${R} ${FG_WHITE}${reset_fmt}${R}"
+    fi
+    echo "$line"
+    return 0
+}
+
 # ─── LINE 1: State, Model, VCS Branch, Plan ──────────────────────────────────
 S=""
 if [ "$show_state_indicator" = true ]; then
@@ -190,32 +247,30 @@ parts=()
 [ -n "$S" ] && parts+=("$S")
 [ -n "$MODEL_NAME" ] && [ "$MODEL_NAME" != "null" ] && parts+=("${FG_BRIGHT_MAGENTA}${I}${MODEL_NAME}${R}")
 [ -n "$DBlock" ] && parts+=("$DBlock")
-[ -n "$PLAN_TIER" ] && [ "$PLAN_TIER" != "null" ] && parts+=("${FG_GRAY}${PLAN_TIER}${R}")
 
 LINE1=""
 for ((i=0; i<${#parts[@]}; i++)); do
     if [ "$i" -gt 0 ]; then
-        LINE1+="${FG_GRAY} ╱ ${R}"
+        LINE1+="${FG_GRAY} ${charSlash} ${R}"
     fi
     LINE1+="${parts[$i]}"
 done
 
 # ─── LINE 2: Context Bar & Stats ─────────────────────────────────────────────
-BAR_LEN=15
 PCT_INT=$(printf "%.0f" "$USED_PCT" 2>/dev/null || echo 0)
-FILLED=$(( (PCT_INT * BAR_LEN) / 100 ))
-REMAINDER=$(( (PCT_INT * BAR_LEN) % 100 ))
+FILLED=$(( (PCT_INT * CONFIG_BAR_LEN_CTX) / 100 ))
+REMAINDER=$(( (PCT_INT * CONFIG_BAR_LEN_CTX) % 100 ))
 
-if [ "$PCT_INT" -ge 90 ]; then
+if [ "$PCT_INT" -ge "$CONFIG_CTX_CRIT_PCT" ]; then
     BAR_COLOR="$FG_BRIGHT_RED"
-elif [ "$PCT_INT" -ge 60 ]; then
+elif [ "$PCT_INT" -ge "$CONFIG_CTX_WARN_PCT" ]; then
     BAR_COLOR="$FG_BRIGHT_YELLOW"
 else
     BAR_COLOR="$FG_BRIGHT_WHITE"
 fi
 
 BAR=""
-for ((i=0; i<BAR_LEN; i++)); do
+for ((i=0; i<CONFIG_BAR_LEN_CTX; i++)); do
     if [ "$i" -lt "$FILLED" ]; then
         BAR="${BAR}█"
     elif [ "$i" -eq "$FILLED" ]; then
@@ -281,48 +336,75 @@ if [ "$show_quota" = true ]; then
     fi
 
     # 5h Quota
-    if [ -n "$Q_5H_REM" ] && [ "$Q_5H_REM" != "null" ]; then
-        pct=$(echo "$Q_5H_REM" | awk '{printf "%.0f", (1 - $1) * 100}' 2>/dev/null || echo 0)
-        qBar=$(build_quota_bar "$pct" 10)
-        pct_fmt=$(printf "%3d" "$pct")
-        reset_fmt=$(format_reset_time "$Q_5H_RESET" "time")
-        pColor=$(color_for_pct "$pct")
-        
-        qLine="${FG_WHITE}${pool_label} 5h${R} ${qBar} ${pColor}${pct_fmt}%${R}"
-        [ -n "$reset_fmt" ] && qLine+=" ${FG_GRAY}⟳${R} ${FG_WHITE}${reset_fmt}${R}"
-        quota_lines+=("$qLine")
+    if line_5h=$(format_quota_line "${pool_label} 5h" "$Q_5H_REM" "$Q_5H_RESET" "time"); then
+        quota_lines+=("$line_5h")
     fi
 
     # Weekly Quota
-    if [ -n "$Q_WK_REM" ] && [ "$Q_WK_REM" != "null" ]; then
-        pct=$(echo "$Q_WK_REM" | awk '{printf "%.0f", (1 - $1) * 100}' 2>/dev/null || echo 0)
-        qBar=$(build_quota_bar "$pct" 10)
-        pct_fmt=$(printf "%3d" "$pct")
-        reset_fmt=$(format_reset_time "$Q_WK_RESET" "datetime")
-        pColor=$(color_for_pct "$pct")
-        
-        qLine="${FG_WHITE}${pool_label} 7d${R} ${qBar} ${pColor}${pct_fmt}%${R}"
-        [ -n "$reset_fmt" ] && qLine+=" ${FG_GRAY}⟳${R} ${FG_WHITE}${reset_fmt}${R}"
-        quota_lines+=("$qLine")
+    if line_wk=$(format_quota_line "${pool_label} 7d" "$Q_WK_REM" "$Q_WK_RESET" "datetime"); then
+        quota_lines+=("$line_wk")
     fi
 fi
 
+if [ -n "$PLAN_TIER" ] && [ "$PLAN_TIER" != "null" ]; then
+    quota_lines=("${FG_GRAY}plan:${R} ${FG_WHITE}${PLAN_TIER}${R}" "${quota_lines[@]}")
+fi
+
 # ─── Render Layout Based on Terminal Width ───────────────────────────────────
-if [ "$COLS" -ge 120 ]; then
+if [ "$COLS" -ge "$CONFIG_LAYOUT_WIDE_COLS" ]; then
     # Wide layout
     echo -e "${LINE1}${FG_GRAY}  │  ${R}${LINE2}"
-elif [ "$COLS" -ge 80 ]; then
+elif [ "$COLS" -ge "$CONFIG_LAYOUT_MED_COLS" ]; then
     # Medium layout
     echo -e "${FG_GRAY}╭─${R} ${LINE1}"
     echo -e "${FG_GRAY}╰─${R}${LINE2}"
 else
-    # Narrow layout
-    echo -e "${LINE1}"
-    echo -e "${LINE2}"
+    # Narrow layout: split into 4 structured lines
+    parts_1a=()
+    [ -n "$S" ] && parts_1a+=("$S")
+    [ -n "$MODEL_NAME" ] && [ "$MODEL_NAME" != "null" ] && parts_1a+=("${FG_BRIGHT_MAGENTA}${I}${MODEL_NAME}${R}")
+    
+    LINE1A=""
+    for ((i=0; i<${#parts_1a[@]}; i++)); do
+        if [ "$i" -gt 0 ]; then
+            LINE1A+="${FG_GRAY} ${charSlash} ${R}"
+        fi
+        LINE1A+="${parts_1a[$i]}"
+    done
+    
+    LINE1B="$DBlock"
+    LINE2A=" ${CTX}"
+    
+    stats_only=()
+    for ((i=1; i<${#stat_parts[@]}; i++)); do
+        stats_only+=("${stat_parts[$i]}")
+    done
+    
+    if [ "${#stats_only[@]}" -gt 0 ]; then
+        LINE2B=" "
+        for ((i=0; i<${#stats_only[@]}; i++)); do
+            if [ "$i" -gt 0 ]; then
+                LINE2B+="$DOT"
+            fi
+              LINE2B+="${stats_only[$i]}"
+        done
+        
+        echo -e "${FG_GRAY}╭─${R} ${LINE1A}"
+        echo -e "${FG_GRAY}├─${R} ${LINE1B}"
+        echo -e "${FG_GRAY}├─${R}${LINE2A}"
+        echo -e "${FG_GRAY}╰─${R}${LINE2B}"
+    else
+        echo -e "${FG_GRAY}╭─${R} ${LINE1A}"
+        echo -e "${FG_GRAY}├─${R} ${LINE1B}"
+        echo -e "${FG_GRAY}╰─${R}${LINE2A}"
+    fi
 fi
 
 for qLine in "${quota_lines[@]}"; do
     echo -e "$qLine"
 done
+
+# Add a trailing empty line for padding at the bottom of the terminal
+echo ""
 
 exit 0

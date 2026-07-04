@@ -54,6 +54,8 @@ try {
     Run-Test "active_working" $defaultConfig
     Run-Test "claude_quota" $defaultConfig
     Run-Test "gemini_quota" $defaultConfig
+    Run-Test "tool_use" $defaultConfig
+    Run-Test "narrow_with_stats" $defaultConfig
 
     # Test Case 2: Show all zero stats
     $showZeroConfig = @{

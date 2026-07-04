@@ -8,19 +8,31 @@ $charCircleFull  = [char]0x25cf
 $charCircleEmpty = [char]0x25cb
 $charDiamond     = [char]0x25c6
 $charGear        = [char]0x2699
-$charWrench      = [string][char[]]@(0xd83d, 0xdd27) # 🔧 (surrogate pair)
+$charWrench      = [char]::ConvertFromUtf32(0x1F527) # 🔧
 $charHourglass   = [char]0x231b
 $charBlockFull   = [char]0x2588
 $charBlockDark   = [char]0x2593
 $charBlockMed    = [char]0x2592
 $charBlockLight  = [char]0x2591
 $charDot         = [char]0x00b7
-$charSlash       = [char]0x2571
-$charPipe        = [char]0x2502
-$charCornerTop   = [char]0x256d
-$charLine        = [char]0x2500
-$charCornerBot   = [char]0x2570
+$charSlash       = [char]0x002f
+$charPipe        = [char]0x2502  # box vertical pipe
+$charCornerTop   = [char]0x256d  # box corner top-left
+$charLine        = [char]0x2500  # box horizontal line
+$charCornerBot   = [char]0x2570  # box corner bottom-left
+$charJoin        = [char]0x251c  # box T-junction left
 $charReset       = [char]0x27f3
+
+# ─── Configuration Constants ──────────────────────────────────────────────────
+$CONFIG_LAYOUT_WIDE_COLS = 120
+$CONFIG_LAYOUT_MED_COLS  = 100
+$CONFIG_BAR_LEN_CTX      = 15
+$CONFIG_BAR_LEN_QUOTA    = 10
+$CONFIG_CTX_WARN_PCT     = 60
+$CONFIG_CTX_CRIT_PCT     = 90
+$CONFIG_QUOTA_INFO_PCT   = 50
+$CONFIG_QUOTA_WARN_PCT   = 70
+$CONFIG_QUOTA_CRIT_PCT   = 90
 
 # ─── Read Stdin ─────────────────────────────────────────────────────────────
 $jsonText = [Console]::In.ReadToEnd()
@@ -133,60 +145,70 @@ if ([string]::IsNullOrEmpty($dirName)) {
     $dirName = $cwd
 }
 
+# ─── Fallback Git Branch Detection ───────────────────────────────────────────
+if ([string]::IsNullOrEmpty($vcsBranch) -and -not [string]::IsNullOrEmpty($cwd)) {
+    try {
+        $gitOut = git -C $cwd status --porcelain --branch 2>$null
+        if ($gitOut) {
+            $gitLines = $gitOut -split "`n"
+            if ($gitLines[0] -match '^## ([^.]+)') {
+                $vcsBranch = $Matches[1].Trim()
+                $vcsDirty = ($gitLines | Select-Object -Skip 1 | Where-Object { $_ -ne '' }).Count -gt 0
+            }
+        }
+    } catch {}
+}
+
 # ─── LINE 1: State, Model, VCS Branch, Plan ──────────────────────────────────
-$S = ""
+$agentStateBadge = ""
 if ($config.show_state_indicator) {
     switch ($state) {
-        "idle"     { $S = "$FG_BRIGHT_GREEN$B$charCircleFull READY$R" }
-        "thinking" { $S = "$FG_BRIGHT_YELLOW$B$charDiamond THINKING$R" }
-        "working"  { $S = "$FG_BRIGHT_CYAN$B$charGear WORKING$R" }
-        "tool_use" { $S = "$FG_BRIGHT_MAGENTA$B$charWrench TOOL$R" }
-        default    { $S = "$FG_WHITE$B$charHourglass $($state.ToUpper())$R" }
+        "idle"     { $agentStateBadge = "$FG_BRIGHT_GREEN$B$charCircleFull READY$R" }
+        "thinking" { $agentStateBadge = "$FG_BRIGHT_YELLOW$B$charDiamond THINKING$R" }
+        "working"  { $agentStateBadge = "$FG_BRIGHT_CYAN$B$charGear WORKING$R" }
+        "tool_use" { $agentStateBadge = "$FG_BRIGHT_MAGENTA$B$charWrench TOOL$R" }
+        default    { $agentStateBadge = "$FG_WHITE$B$charHourglass $($state.ToUpper())$R" }
     }
 }
 
-$DBlock = "$FG_BRIGHT_CYAN$dirName$R"
+$gitDirStatusBadge = "$FG_BRIGHT_CYAN$dirName$R"
 if (-not [string]::IsNullOrEmpty($vcsBranch)) {
     if ($vcsDirty) {
-        $DBlock += " $FG_BRIGHT_GREEN($FG_BRIGHT_RED$vcsBranch$FG_BRIGHT_YELLOW*$FG_BRIGHT_GREEN)$R"
+        $gitDirStatusBadge += " $FG_BRIGHT_GREEN($FG_BRIGHT_RED$vcsBranch$FG_BRIGHT_YELLOW*$FG_BRIGHT_GREEN)$R"
     } else {
-        $DBlock += " $FG_BRIGHT_GREEN($FG_BRIGHT_BLUE$vcsBranch$FG_BRIGHT_GREEN)$R"
+        $gitDirStatusBadge += " $FG_BRIGHT_GREEN($FG_BRIGHT_BLUE$vcsBranch$FG_BRIGHT_GREEN)$R"
     }
 }
 
 $parts = [System.Collections.Generic.List[string]]::new()
-if (-not [string]::IsNullOrEmpty($S)) {
-    $parts.Add($S)
+if (-not [string]::IsNullOrEmpty($agentStateBadge)) {
+    $parts.Add($agentStateBadge)
 }
 if (-not [string]::IsNullOrEmpty($modelDisplayName)) {
     $parts.Add("$FG_BRIGHT_MAGENTA$I$modelDisplayName$R")
 }
-if (-not [string]::IsNullOrEmpty($DBlock)) {
-    $parts.Add($DBlock)
-}
-if (-not [string]::IsNullOrEmpty($planTier) -and $planTier -ne "null") {
-    $parts.Add("$FG_GRAY$planTier$R")
+if (-not [string]::IsNullOrEmpty($gitDirStatusBadge)) {
+    $parts.Add($gitDirStatusBadge)
 }
 
 $LINE1 = [string]::Join("$FG_GRAY $charSlash $R", $parts)
 
 # ─── LINE 2: Context Bar & Stats ─────────────────────────────────────────────
-$barLen = 15
-$filled = [int][Math]::Floor(($usedPct * $barLen) / 100)
-$remainder = ($usedPct * $barLen) % 100
+$filled = [int][Math]::Floor(($usedPct * $CONFIG_BAR_LEN_CTX) / 100)
+$remainder = ($usedPct * $CONFIG_BAR_LEN_CTX) % 100
 
 $barColor = $FG_BRIGHT_WHITE
-if ($usedPct -ge 90) {
+if ($usedPct -ge $CONFIG_CTX_CRIT_PCT) {
     $barColor = $FG_BRIGHT_RED
-} elseif ($usedPct -ge 60) {
+} elseif ($usedPct -ge $CONFIG_CTX_WARN_PCT) {
     $barColor = $FG_BRIGHT_YELLOW
 }
 
 $bar = ""
-for ($i = 0; $i -lt $barLen; $i++) {
-    if ($i -lt $filled) {
+for ($idx = 0; $idx -lt $CONFIG_BAR_LEN_CTX; $idx++) {
+    if ($idx -lt $filled) {
         $bar += $charBlockFull
-    } elseif ($i -eq $filled) {
+    } elseif ($idx -eq $filled) {
         if ($remainder -ge 75) { $bar += $charBlockDark }
         elseif ($remainder -ge 50) { $bar += $charBlockMed }
         elseif ($remainder -ge 25) { $bar += $charBlockLight }
@@ -197,47 +219,83 @@ for ($i = 0; $i -lt $barLen; $i++) {
 }
 
 $pctFmt = $usedPct.ToString("F1", [System.Globalization.CultureInfo]::InvariantCulture)
-$CTX = "$FG_GRAYctx $barColor$bar $NUM_COLOR$pctFmt%$R"
+$contextBarBadge = "${FG_GRAY}ctx $barColor$bar $NUM_COLOR$pctFmt%$R"
 
 $statParts = [System.Collections.Generic.List[string]]::new()
-$statParts.Add($CTX)
+$statParts.Add($contextBarBadge)
 
 if ($config.show_additional_stats) {
     if (-not $config.hide_zero_stats -or $artifactCount -gt 0) {
-        $statParts.Add("$FG_GRAYartifacts $NUM_COLOR$artifactCount$R")
+        $statParts.Add("${FG_GRAY}artifacts $NUM_COLOR$artifactCount$R")
     }
     if (-not $config.hide_zero_stats -or $subagentCount -gt 0) {
-        $statParts.Add("$FG_GRAYsubagents $NUM_COLOR$subagentCount$R")
+        $statParts.Add("${FG_GRAY}subagents $NUM_COLOR$subagentCount$R")
     }
     if (-not $config.hide_zero_stats -or $taskCount -gt 0) {
-        $statParts.Add("$FG_GRAYtasks $NUM_COLOR$taskCount$R")
+        $statParts.Add("${FG_GRAY}tasks $NUM_COLOR$taskCount$R")
     }
     if ($sandboxEnabled) {
-        $statParts.Add("$FG_GRAYsandbox $FG_BRIGHT_GREEN${B}ON$R")
+        $statParts.Add("${FG_GRAY}sandbox $FG_BRIGHT_GREEN${B}ON$R")
     } elseif (-not $config.hide_zero_stats) {
-        $statParts.Add("$FG_GRAYsandbox off$R")
+        $statParts.Add("${FG_GRAY}sandbox off$R")
     }
 }
 
 $LINE2 = " " + [string]::Join("$FG_GRAY $charDot $R", $statParts)
 
 # ─── Quota Progress Bars ─────────────────────────────────────────────────────
+function Get-QuotaColor {
+    param([int]$pct)
+    if ($pct -ge $CONFIG_QUOTA_CRIT_PCT) { return $FG_BRIGHT_RED }
+    if ($pct -ge $CONFIG_QUOTA_WARN_PCT)  { return $FG_BRIGHT_YELLOW }
+    if ($pct -ge $CONFIG_QUOTA_INFO_PCT)  { return $FG_BRIGHT_CYAN }
+    return $FG_BRIGHT_GREEN
+}
+
 function Get-QuotaBar {
     param(
         [double]$pct,
-        [int]$width = 10
+        [int]$width = $CONFIG_BAR_LEN_QUOTA
     )
     $filled = [int][Math]::Round(($pct * $width) / 100)
     $empty = $width - $filled
-    
-    $barColor = $FG_BRIGHT_GREEN
-    if ($pct -ge 90) { $barColor = $FG_BRIGHT_RED }
-    elseif ($pct -ge 70) { $barColor = $FG_BRIGHT_YELLOW }
-    elseif ($pct -ge 50) { $barColor = $FG_BRIGHT_CYAN }
-    
+    $barColor = Get-QuotaColor -pct $pct
     $fStr = [string]::new($charCircleFull, $filled)
     $eStr = [string]::new($charCircleEmpty, $empty)
     return "$barColor$fStr$FG_GRAY$eStr$R"
+}
+
+function Get-QuotaLine {
+    param(
+        [string]$label,
+        $quotaData,
+        [string]$timeFormat
+    )
+    if ($null -eq $quotaData) { return $null }
+
+    $remaining = 1.0
+    if ($null -ne $quotaData.remaining_fraction) {
+        $remaining = [double]$quotaData.remaining_fraction
+    }
+    $pct = [int][Math]::Round((1.0 - $remaining) * 100)
+    $pct = [Math]::Max(0, [Math]::Min(100, $pct))
+
+    $qBar = Get-QuotaBar -pct $pct
+    $pctFmt = "{0,3}" -f $pct
+    $pColor = Get-QuotaColor -pct $pct
+
+    $resetIso = if ($null -ne $quotaData.reset_time) { $quotaData.reset_time.ToString() } else { "" }
+    $resetFmt = ""
+    if (-not [string]::IsNullOrEmpty($resetIso) -and $resetIso -ne "null") {
+        try {
+            $dateTime = [DateTimeOffset]::Parse($resetIso)
+            $localTime = $dateTime.LocalDateTime
+            $timeStr = $localTime.ToString($timeFormat).ToLower()
+            $resetFmt = " $FG_GRAY$charReset$R $FG_WHITE$timeStr$R"
+        } catch {}
+    }
+
+    return "$FG_WHITE$label$R $qBar $pColor$pctFmt%$R$resetFmt"
 }
 
 $quotaLines = [System.Collections.Generic.List[string]]::new()
@@ -254,82 +312,53 @@ if ($config.show_quota -and $null -ne $data.quota) {
     $poolLabel = if ($quotaPool -eq "3p") { "claude" } else { "gemini" }
 
     # 5h Quota
-    $q5h = $data.quota.$q5hKey
-    if ($null -ne $q5h) {
-        $remaining = 1.0
-        if ($null -ne $q5h.remaining_fraction) {
-            $remaining = [double]$q5h.remaining_fraction
-        }
-        $pct = [int][Math]::Round((1.0 - $remaining) * 100)
-        $pct = [Math]::Max(0, [Math]::Min(100, $pct))
-        
-        $qBar = Get-QuotaBar -pct $pct
-        $pctFmt = "{0,3}" -f $pct
-        
-        $resetIso = if ($null -ne $q5h.reset_time) { $q5h.reset_time.ToString() } else { "" }
-        $resetFmt = ""
-        if (-not [string]::IsNullOrEmpty($resetIso) -and $resetIso -ne "null") {
-            try {
-                $dateTime = [DateTimeOffset]::Parse($resetIso)
-                $localTime = $dateTime.LocalDateTime
-                $resetFmt = " $FG_GRAY$charReset$R $FG_WHITE$($localTime.ToString("HH:mm"))$R"
-            } catch {}
-        }
-        
-        $pColor = $FG_BRIGHT_GREEN
-        if ($pct -ge 90) { $pColor = $FG_BRIGHT_RED }
-        elseif ($pct -ge 70) { $pColor = $FG_BRIGHT_YELLOW }
-        elseif ($pct -ge 50) { $pColor = $FG_BRIGHT_CYAN }
-        
-        $quotaLines.Add("$FG_WHITE$poolLabel 5h$R $qBar $pColor$pctFmt%$R$resetFmt")
-    }
+    $line5h = Get-QuotaLine -label "$poolLabel 5h" -quotaData $data.quota.$q5hKey -timeFormat "HH:mm"
+    if ($null -ne $line5h) { $quotaLines.Add($line5h) }
 
     # Weekly Quota
-    $qwk = $data.quota.$qwkKey
-    if ($null -ne $qwk) {
-        $remaining = 1.0
-        if ($null -ne $qwk.remaining_fraction) {
-            $remaining = [double]$qwk.remaining_fraction
-        }
-        $pct = [int][Math]::Round((1.0 - $remaining) * 100)
-        $pct = [Math]::Max(0, [Math]::Min(100, $pct))
-        
-        $qBar = Get-QuotaBar -pct $pct
-        $pctFmt = "{0,3}" -f $pct
-        
-        $resetIso = if ($null -ne $qwk.reset_time) { $qwk.reset_time.ToString() } else { "" }
-        $resetFmt = ""
-        if (-not [string]::IsNullOrEmpty($resetIso) -and $resetIso -ne "null") {
-            try {
-                $dateTime = [DateTimeOffset]::Parse($resetIso)
-                $localTime = $dateTime.LocalDateTime
-                $resetFmt = " $FG_GRAY$charReset$R $FG_WHITE$($localTime.ToString("MMM d, HH:mm").ToLower())$R"
-            } catch {}
-        }
-        
-        $pColor = $FG_BRIGHT_GREEN
-        if ($pct -ge 90) { $pColor = $FG_BRIGHT_RED }
-        elseif ($pct -ge 70) { $pColor = $FG_BRIGHT_YELLOW }
-        elseif ($pct -ge 50) { $pColor = $FG_BRIGHT_CYAN }
-        
-        $quotaLines.Add("$FG_WHITE$poolLabel 7d$R $qBar $pColor$pctFmt%$R$resetFmt")
-    }
+    $lineWk = Get-QuotaLine -label "$poolLabel 7d" -quotaData $data.quota.$qwkKey -timeFormat "MMM d, HH:mm"
+    if ($null -ne $lineWk) { $quotaLines.Add($lineWk) }
+}
+
+if (-not [string]::IsNullOrEmpty($planTier) -and $planTier -ne "null") {
+    $quotaLines.Insert(0, "${FG_GRAY}plan:${R} $FG_WHITE$planTier$R")
 }
 
 # ─── Render Layout Based on Terminal Width ───────────────────────────────────
-if ($cols -ge 120) {
+if ($cols -ge $CONFIG_LAYOUT_WIDE_COLS) {
     # Wide layout: everything on one line, quotas below
     Write-Output "$LINE1$FG_GRAY  $charPipe  $R$LINE2"
-} elseif ($cols -ge 80) {
+} elseif ($cols -ge $CONFIG_LAYOUT_MED_COLS) {
     # Medium layout: two lines with box border characters
     Write-Output "$FG_GRAY$charCornerTop$charLine$R $LINE1"
     Write-Output "$FG_GRAY$charCornerBot$charLine$R$LINE2"
 } else {
-    # Narrow layout: simple multi-line format
-    Write-Output $LINE1
-    Write-Output $LINE2
+    # Narrow layout: split into 4 structured lines
+    $parts1A = [System.Collections.Generic.List[string]]::new()
+    if (-not [string]::IsNullOrEmpty($agentStateBadge)) { $parts1A.Add($agentStateBadge) }
+    if (-not [string]::IsNullOrEmpty($modelDisplayName)) { $parts1A.Add("$FG_BRIGHT_MAGENTA$I$modelDisplayName$R") }
+    $LINE1A = [string]::Join("$FG_GRAY $charSlash $R", $parts1A)
+    
+    $LINE1B = $gitDirStatusBadge
+    $LINE2A = " $contextBarBadge"
+    
+    $statsOnly = $statParts | Select-Object -Skip 1
+    if (($statsOnly | Measure-Object).Count -gt 0) {
+        $LINE2B = " " + [string]::Join("$FG_GRAY $charDot $R", $statsOnly)
+        Write-Output "$FG_GRAY$charCornerTop$charLine$R $LINE1A"
+        Write-Output "$FG_GRAY$charJoin$charLine$R $LINE1B"
+        Write-Output "$FG_GRAY$charJoin$charLine$R$LINE2A"
+        Write-Output "$FG_GRAY$charCornerBot$charLine$R$LINE2B"
+    } else {
+        Write-Output "$FG_GRAY$charCornerTop$charLine$R $LINE1A"
+        Write-Output "$FG_GRAY$charJoin$charLine$R $LINE1B"
+        Write-Output "$FG_GRAY$charCornerBot$charLine$R$LINE2A"
+    }
 }
 
 foreach ($qLine in $quotaLines) {
     Write-Output $qLine
 }
+
+# Add a trailing empty line for padding at the bottom of the terminal
+Write-Output ""
