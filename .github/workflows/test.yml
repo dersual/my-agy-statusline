@@ -1,0 +1,53 @@
+name: Test Statusline Scripts
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-bash:
+    name: Test Bash Statusline
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify jq Installation
+        run: |
+          if ! command -v jq &>/dev/null; then
+            if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+              sudo apt-get update && sudo apt-get install -y jq
+            elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+              brew install jq
+            fi
+          fi
+          jq --version
+
+      - name: Run Bash Statusline Tests
+        run: |
+          chmod +x bin/statusline.sh tests/test_sh.sh
+          bash tests/test_sh.sh
+
+  test-powershell:
+    name: Test PowerShell Statusline
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Windows PowerShell 5.1 Tests
+        shell: powershell
+        run: |
+          powershell -NoProfile -File tests/test_ps1.ps1
+
+      - name: Run PowerShell Core 7+ Tests
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File tests/test_ps1.ps1
