@@ -1,0 +1,32 @@
+{
+  "agent_state": "tool_use",
+  "context_window": {
+    "used_percentage": 35.0
+  },
+  "vcs": {
+    "branch": "main",
+    "dirty": false
+  },
+  "sandbox": {
+    "enabled": true
+  },
+  "artifact_count": 2,
+  "subagents": [],
+  "task_count": 0,
+  "model": {
+    "id": "gemini-2.5-pro",
+    "display_name": "Gemini 2.5 Pro"
+  },
+  "terminal_width": 80,
+  "plan_tier": "Google AI Pro",
+  "quota": {
+    "gemini-5h": {
+      "remaining_fraction": 0.75,
+      "reset_time": "2026-07-04T22:00:00Z"
+    },
+    "gemini-weekly": {
+      "remaining_fraction": 0.85,
+      "reset_time": "2026-07-11T12:00:00Z"
+    }
+  }
+}

@@ -16,11 +16,11 @@ $charBlockMed    = [char]0x2592
 $charBlockLight  = [char]0x2591
 $charDot         = [char]0x00b7
 $charSlash       = [char]0x002f
-$charPipe        = [char]0x2502
-$charCornerTop   = [char]0x256d # ╭
-$charLine        = [char]0x2500 # ─
-$charCornerBot   = [char]0x2570 # ╰
-$charJoin        = [char]0x251c # ├
+$charPipe        = [char]0x2502  # box vertical pipe
+$charCornerTop   = [char]0x256d  # box corner top-left
+$charLine        = [char]0x2500  # box horizontal line
+$charCornerBot   = [char]0x2570  # box corner bottom-left
+$charJoin        = [char]0x251c  # box T-junction left
 $charReset       = [char]0x27f3
 
 # ─── Configuration Constants ──────────────────────────────────────────────────
@@ -148,11 +148,13 @@ if ([string]::IsNullOrEmpty($dirName)) {
 # ─── Fallback Git Branch Detection ───────────────────────────────────────────
 if ([string]::IsNullOrEmpty($vcsBranch) -and -not [string]::IsNullOrEmpty($cwd)) {
     try {
-        $gitBranch = git -C $cwd branch --show-current 2>$null
-        if (-not [string]::IsNullOrEmpty($gitBranch)) {
-            $vcsBranch = $gitBranch.Trim()
-            $status = git -C $cwd status --porcelain 2>$null
-            $vcsDirty = -not [string]::IsNullOrEmpty($status)
+        $gitOut = git -C $cwd status --porcelain --branch 2>$null
+        if ($gitOut) {
+            $gitLines = $gitOut -split "`n"
+            if ($gitLines[0] -match '^## ([^.]+)') {
+                $vcsBranch = $Matches[1].Trim()
+                $vcsDirty = ($gitLines | Select-Object -Skip 1 | Where-Object { $_ -ne '' }).Count -gt 0
+            }
         }
     } catch {}
 }
@@ -242,6 +244,14 @@ if ($config.show_additional_stats) {
 $LINE2 = " " + [string]::Join("$FG_GRAY $charDot $R", $statParts)
 
 # ─── Quota Progress Bars ─────────────────────────────────────────────────────
+function Get-QuotaColor {
+    param([int]$pct)
+    if ($pct -ge $CONFIG_QUOTA_CRIT_PCT) { return $FG_BRIGHT_RED }
+    if ($pct -ge $CONFIG_QUOTA_WARN_PCT)  { return $FG_BRIGHT_YELLOW }
+    if ($pct -ge $CONFIG_QUOTA_INFO_PCT)  { return $FG_BRIGHT_CYAN }
+    return $FG_BRIGHT_GREEN
+}
+
 function Get-QuotaBar {
     param(
         [double]$pct,
@@ -249,12 +259,7 @@ function Get-QuotaBar {
     )
     $filled = [int][Math]::Round(($pct * $width) / 100)
     $empty = $width - $filled
-    
-    $barColor = $FG_BRIGHT_GREEN
-    if ($pct -ge $CONFIG_QUOTA_CRIT_PCT) { $barColor = $FG_BRIGHT_RED }
-    elseif ($pct -ge $CONFIG_QUOTA_WARN_PCT) { $barColor = $FG_BRIGHT_YELLOW }
-    elseif ($pct -ge $CONFIG_QUOTA_INFO_PCT) { $barColor = $FG_BRIGHT_CYAN }
-    
+    $barColor = Get-QuotaColor -pct $pct
     $fStr = [string]::new($charCircleFull, $filled)
     $eStr = [string]::new($charCircleEmpty, $empty)
     return "$barColor$fStr$FG_GRAY$eStr$R"
@@ -274,10 +279,11 @@ function Get-QuotaLine {
     }
     $pct = [int][Math]::Round((1.0 - $remaining) * 100)
     $pct = [Math]::Max(0, [Math]::Min(100, $pct))
-    
+
     $qBar = Get-QuotaBar -pct $pct
     $pctFmt = "{0,3}" -f $pct
-    
+    $pColor = Get-QuotaColor -pct $pct
+
     $resetIso = if ($null -ne $quotaData.reset_time) { $quotaData.reset_time.ToString() } else { "" }
     $resetFmt = ""
     if (-not [string]::IsNullOrEmpty($resetIso) -and $resetIso -ne "null") {
@@ -288,12 +294,7 @@ function Get-QuotaLine {
             $resetFmt = " $FG_GRAY$charReset$R $FG_WHITE$timeStr$R"
         } catch {}
     }
-    
-    $pColor = $FG_BRIGHT_GREEN
-    if ($pct -ge $CONFIG_QUOTA_CRIT_PCT) { $pColor = $FG_BRIGHT_RED }
-    elseif ($pct -ge $CONFIG_QUOTA_WARN_PCT) { $pColor = $FG_BRIGHT_YELLOW }
-    elseif ($pct -ge $CONFIG_QUOTA_INFO_PCT) { $pColor = $FG_BRIGHT_CYAN }
-    
+
     return "$FG_WHITE$label$R $qBar $pColor$pctFmt%$R$resetFmt"
 }
 
