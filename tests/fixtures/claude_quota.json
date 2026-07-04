@@ -1,0 +1,32 @@
+{
+  "agent_state": "thinking",
+  "context_window": {
+    "used_percentage": 27.0
+  },
+  "vcs": {
+    "branch": "main",
+    "dirty": true
+  },
+  "sandbox": {
+    "enabled": false
+  },
+  "artifact_count": 0,
+  "subagents": [],
+  "task_count": 0,
+  "model": {
+    "id": "claude-3-5-sonnet",
+    "display_name": "Claude 3.5 Sonnet"
+  },
+  "terminal_width": 80,
+  "plan_tier": "Google AI Pro",
+  "quota": {
+    "3p-5h": {
+      "remaining_fraction": 0.79,
+      "reset_time": "2026-07-04T21:30:00Z"
+    },
+    "3p-weekly": {
+      "remaining_fraction": 0.84,
+      "reset_time": "2026-07-11T12:00:00Z"
+    }
+  }
+}
