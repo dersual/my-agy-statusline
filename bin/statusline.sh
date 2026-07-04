@@ -325,4 +325,7 @@ for qLine in "${quota_lines[@]}"; do
     echo -e "$qLine"
 done
 
+# Add a trailing empty line for padding at the bottom of the terminal
+echo ""
+
 exit 0

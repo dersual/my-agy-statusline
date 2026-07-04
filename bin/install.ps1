@@ -55,7 +55,11 @@ if (Test-Path $settingsFile) {
         }
 
         $settings.statusLine.type = "command"
-        $settings.statusLine.command = "powershell -NoProfile -File `"$destScript`""
+        if ($destScript.Contains(" ")) {
+            $settings.statusLine.command = "powershell -NoProfile -File '$destScript'"
+        } else {
+            $settings.statusLine.command = "powershell -NoProfile -File $destScript"
+        }
         $settings.statusLine.enabled = $true
 
         # Convert back to JSON and write to file

@@ -197,25 +197,25 @@ for ($i = 0; $i -lt $barLen; $i++) {
 }
 
 $pctFmt = $usedPct.ToString("F1", [System.Globalization.CultureInfo]::InvariantCulture)
-$CTX = "$FG_GRAYctx $barColor$bar $NUM_COLOR$pctFmt%$R"
+$CTX = "${FG_GRAY}ctx $barColor$bar $NUM_COLOR$pctFmt%$R"
 
 $statParts = [System.Collections.Generic.List[string]]::new()
 $statParts.Add($CTX)
 
 if ($config.show_additional_stats) {
     if (-not $config.hide_zero_stats -or $artifactCount -gt 0) {
-        $statParts.Add("$FG_GRAYartifacts $NUM_COLOR$artifactCount$R")
+        $statParts.Add("${FG_GRAY}artifacts $NUM_COLOR$artifactCount$R")
     }
     if (-not $config.hide_zero_stats -or $subagentCount -gt 0) {
-        $statParts.Add("$FG_GRAYsubagents $NUM_COLOR$subagentCount$R")
+        $statParts.Add("${FG_GRAY}subagents $NUM_COLOR$subagentCount$R")
     }
     if (-not $config.hide_zero_stats -or $taskCount -gt 0) {
-        $statParts.Add("$FG_GRAYtasks $NUM_COLOR$taskCount$R")
+        $statParts.Add("${FG_GRAY}tasks $NUM_COLOR$taskCount$R")
     }
     if ($sandboxEnabled) {
-        $statParts.Add("$FG_GRAYsandbox $FG_BRIGHT_GREEN${B}ON$R")
+        $statParts.Add("${FG_GRAY}sandbox $FG_BRIGHT_GREEN${B}ON$R")
     } elseif (-not $config.hide_zero_stats) {
-        $statParts.Add("$FG_GRAYsandbox off$R")
+        $statParts.Add("${FG_GRAY}sandbox off$R")
     }
 }
 
@@ -333,3 +333,6 @@ if ($cols -ge 120) {
 foreach ($qLine in $quotaLines) {
     Write-Output $qLine
 }
+
+# Add a trailing empty line for padding at the bottom of the terminal
+Write-Output ""
