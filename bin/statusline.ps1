@@ -1,6 +1,7 @@
 # Windows PowerShell Statusline for Google Antigravity CLI (agy)
 # Native, zero-dependency script utilizing built-in .NET classes and ANSI sequences.
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 # ─── Define Unicode Characters via Hex Codes (PowerShell 5.1 Safe) ───────────
 $charCircleFull  = [char]0x25cf
@@ -18,7 +19,7 @@ $charSlash       = [char]0x2571
 $charPipe        = [char]0x2502
 $charCornerTop   = [char]0x256d
 $charLine        = [char]0x2500
-$charCornerBot   = [char]0x256e
+$charCornerBot   = [char]0x2570
 $charReset       = [char]0x27f3
 
 # ─── Read Stdin ─────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 # Windows PowerShell test harness for statusline.ps1
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $scriptPath = Join-Path $PSScriptRoot "..\bin\statusline.ps1"
 $fixturesDir = Join-Path $PSScriptRoot "fixtures"
