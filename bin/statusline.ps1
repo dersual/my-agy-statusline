@@ -8,23 +8,24 @@ $charCircleFull  = [char]0x25cf
 $charCircleEmpty = [char]0x25cb
 $charDiamond     = [char]0x25c6
 $charGear        = [char]0x2699
-$charWrench      = [string][char[]]@(0xd83d, 0xdd27) # 🔧 (surrogate pair)
+$charWrench      = [char]::ConvertFromUtf32(0x1F527) # 🔧
 $charHourglass   = [char]0x231b
 $charBlockFull   = [char]0x2588
 $charBlockDark   = [char]0x2593
 $charBlockMed    = [char]0x2592
 $charBlockLight  = [char]0x2591
 $charDot         = [char]0x00b7
-$charSlash       = [char]0x2571
+$charSlash       = [char]0x002f
 $charPipe        = [char]0x2502
-$charCornerTop   = [char]0x256d
-$charLine        = [char]0x2500
-$charCornerBot   = [char]0x2570
+$charCornerTop   = [char]0x256d # ╭
+$charLine        = [char]0x2500 # ─
+$charCornerBot   = [char]0x2570 # ╰
+$charJoin        = [char]0x251c # ├
 $charReset       = [char]0x27f3
 
 # ─── Configuration Constants ──────────────────────────────────────────────────
 $CONFIG_LAYOUT_WIDE_COLS = 120
-$CONFIG_LAYOUT_MED_COLS  = 80
+$CONFIG_LAYOUT_MED_COLS  = 100
 $CONFIG_BAR_LEN_CTX      = 15
 $CONFIG_BAR_LEN_QUOTA    = 10
 $CONFIG_CTX_WARN_PCT     = 60
@@ -144,6 +145,18 @@ if ([string]::IsNullOrEmpty($dirName)) {
     $dirName = $cwd
 }
 
+# ─── Fallback Git Branch Detection ───────────────────────────────────────────
+if ([string]::IsNullOrEmpty($vcsBranch) -and -not [string]::IsNullOrEmpty($cwd)) {
+    try {
+        $gitBranch = git -C $cwd branch --show-current 2>$null
+        if (-not [string]::IsNullOrEmpty($gitBranch)) {
+            $vcsBranch = $gitBranch.Trim()
+            $status = git -C $cwd status --porcelain 2>$null
+            $vcsDirty = -not [string]::IsNullOrEmpty($status)
+        }
+    } catch {}
+}
+
 # ─── LINE 1: State, Model, VCS Branch, Plan ──────────────────────────────────
 $agentStateBadge = ""
 if ($config.show_state_indicator) {
@@ -175,9 +188,6 @@ if (-not [string]::IsNullOrEmpty($modelDisplayName)) {
 if (-not [string]::IsNullOrEmpty($gitDirStatusBadge)) {
     $parts.Add($gitDirStatusBadge)
 }
-if (-not [string]::IsNullOrEmpty($planTier) -and $planTier -ne "null") {
-    $parts.Add("$FG_GRAY$planTier$R")
-}
 
 $LINE1 = [string]::Join("$FG_GRAY $charSlash $R", $parts)
 
@@ -193,10 +203,10 @@ if ($usedPct -ge $CONFIG_CTX_CRIT_PCT) {
 }
 
 $bar = ""
-for ($i = 0; $i -lt $CONFIG_BAR_LEN_CTX; $i++) {
-    if ($i -lt $filled) {
+for ($idx = 0; $idx -lt $CONFIG_BAR_LEN_CTX; $idx++) {
+    if ($idx -lt $filled) {
         $bar += $charBlockFull
-    } elseif ($i -eq $filled) {
+    } elseif ($idx -eq $filled) {
         if ($remainder -ge 75) { $bar += $charBlockDark }
         elseif ($remainder -ge 50) { $bar += $charBlockMed }
         elseif ($remainder -ge 25) { $bar += $charBlockLight }
@@ -309,6 +319,10 @@ if ($config.show_quota -and $null -ne $data.quota) {
     if ($null -ne $lineWk) { $quotaLines.Add($lineWk) }
 }
 
+if (-not [string]::IsNullOrEmpty($planTier) -and $planTier -ne "null") {
+    $quotaLines.Insert(0, "${FG_GRAY}plan:${R} $FG_WHITE$planTier$R")
+}
+
 # ─── Render Layout Based on Terminal Width ───────────────────────────────────
 if ($cols -ge $CONFIG_LAYOUT_WIDE_COLS) {
     # Wide layout: everything on one line, quotas below
@@ -318,9 +332,27 @@ if ($cols -ge $CONFIG_LAYOUT_WIDE_COLS) {
     Write-Output "$FG_GRAY$charCornerTop$charLine$R $LINE1"
     Write-Output "$FG_GRAY$charCornerBot$charLine$R$LINE2"
 } else {
-    # Narrow layout: simple multi-line format
-    Write-Output $LINE1
-    Write-Output $LINE2
+    # Narrow layout: split into 4 structured lines
+    $parts1A = [System.Collections.Generic.List[string]]::new()
+    if (-not [string]::IsNullOrEmpty($agentStateBadge)) { $parts1A.Add($agentStateBadge) }
+    if (-not [string]::IsNullOrEmpty($modelDisplayName)) { $parts1A.Add("$FG_BRIGHT_MAGENTA$I$modelDisplayName$R") }
+    $LINE1A = [string]::Join("$FG_GRAY $charSlash $R", $parts1A)
+    
+    $LINE1B = $gitDirStatusBadge
+    $LINE2A = " $contextBarBadge"
+    
+    $statsOnly = $statParts | Select-Object -Skip 1
+    if (($statsOnly | Measure-Object).Count -gt 0) {
+        $LINE2B = " " + [string]::Join("$FG_GRAY $charDot $R", $statsOnly)
+        Write-Output "$FG_GRAY$charCornerTop$charLine$R $LINE1A"
+        Write-Output "$FG_GRAY$charJoin$charLine$R $LINE1B"
+        Write-Output "$FG_GRAY$charJoin$charLine$R$LINE2A"
+        Write-Output "$FG_GRAY$charCornerBot$charLine$R$LINE2B"
+    } else {
+        Write-Output "$FG_GRAY$charCornerTop$charLine$R $LINE1A"
+        Write-Output "$FG_GRAY$charJoin$charLine$R $LINE1B"
+        Write-Output "$FG_GRAY$charCornerBot$charLine$R$LINE2A"
+    }
 }
 
 foreach ($qLine in $quotaLines) {

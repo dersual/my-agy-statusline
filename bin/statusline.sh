@@ -59,8 +59,9 @@ fi
 
 # ─── Configuration Constants ──────────────────────────────────────────────────
 CONFIG_LAYOUT_WIDE_COLS=120
-CONFIG_LAYOUT_MED_COLS=80
+CONFIG_LAYOUT_MED_COLS=100
 CONFIG_BAR_LEN_CTX=15
+charSlash="/"
 CONFIG_BAR_LEN_QUOTA=10
 CONFIG_CTX_WARN_PCT=60
 CONFIG_CTX_CRIT_PCT=90
@@ -111,6 +112,22 @@ if [ -z "$CWD" ] || [ "$CWD" = "null" ]; then
     CWD=$(pwd)
 fi
 DIRNAME=$(basename "$CWD")
+
+# ─── Fallback Git Branch Detection ───────────────────────────────────────────
+if [ -z "$VCS_BRANCH" ] || [ "$VCS_BRANCH" = "null" ]; then
+    if [ -n "$CWD" ] && [ -d "$CWD" ]; then
+        git_branch=$(git -C "$CWD" branch --show-current 2>/dev/null)
+        if [ -n "$git_branch" ]; then
+            VCS_BRANCH="$git_branch"
+            git_status=$(git -C "$CWD" status --porcelain 2>/dev/null)
+            if [ -n "$git_status" ]; then
+                VCS_DIRTY="true"
+            else
+                VCS_DIRTY="false"
+            fi
+        fi
+    fi
+fi
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 color_for_pct() {
@@ -230,12 +247,11 @@ parts=()
 [ -n "$S" ] && parts+=("$S")
 [ -n "$MODEL_NAME" ] && [ "$MODEL_NAME" != "null" ] && parts+=("${FG_BRIGHT_MAGENTA}${I}${MODEL_NAME}${R}")
 [ -n "$DBlock" ] && parts+=("$DBlock")
-[ -n "$PLAN_TIER" ] && [ "$PLAN_TIER" != "null" ] && parts+=("${FG_GRAY}${PLAN_TIER}${R}")
 
 LINE1=""
 for ((i=0; i<${#parts[@]}; i++)); do
     if [ "$i" -gt 0 ]; then
-        LINE1+="${FG_GRAY} ╱ ${R}"
+        LINE1+="${FG_GRAY} ${charSlash} ${R}"
     fi
     LINE1+="${parts[$i]}"
 done
@@ -330,6 +346,10 @@ if [ "$show_quota" = true ]; then
     fi
 fi
 
+if [ -n "$PLAN_TIER" ] && [ "$PLAN_TIER" != "null" ]; then
+    quota_lines=("${FG_GRAY}plan:${R} ${FG_WHITE}${PLAN_TIER}${R}" "${quota_lines[@]}")
+fi
+
 # ─── Render Layout Based on Terminal Width ───────────────────────────────────
 if [ "$COLS" -ge "$CONFIG_LAYOUT_WIDE_COLS" ]; then
     # Wide layout
@@ -339,9 +359,45 @@ elif [ "$COLS" -ge "$CONFIG_LAYOUT_MED_COLS" ]; then
     echo -e "${FG_GRAY}╭─${R} ${LINE1}"
     echo -e "${FG_GRAY}╰─${R}${LINE2}"
 else
-    # Narrow layout
-    echo -e "${LINE1}"
-    echo -e "${LINE2}"
+    # Narrow layout: split into 4 structured lines
+    parts_1a=()
+    [ -n "$S" ] && parts_1a+=("$S")
+    [ -n "$MODEL_NAME" ] && [ "$MODEL_NAME" != "null" ] && parts_1a+=("${FG_BRIGHT_MAGENTA}${I}${MODEL_NAME}${R}")
+    
+    LINE1A=""
+    for ((i=0; i<${#parts_1a[@]}; i++)); do
+        if [ "$i" -gt 0 ]; then
+            LINE1A+="${FG_GRAY} ${charSlash} ${R}"
+        fi
+        LINE1A+="${parts_1a[$i]}"
+    done
+    
+    LINE1B="$DBlock"
+    LINE2A=" ${CTX}"
+    
+    stats_only=()
+    for ((i=1; i<${#stat_parts[@]}; i++)); do
+        stats_only+=("${stat_parts[$i]}")
+    done
+    
+    if [ "${#stats_only[@]}" -gt 0 ]; then
+        LINE2B=" "
+        for ((i=0; i<${#stats_only[@]}; i++)); do
+            if [ "$i" -gt 0 ]; then
+                LINE2B+="$DOT"
+            fi
+              LINE2B+="${stats_only[$i]}"
+        done
+        
+        echo -e "${FG_GRAY}╭─${R} ${LINE1A}"
+        echo -e "${FG_GRAY}├─${R} ${LINE1B}"
+        echo -e "${FG_GRAY}├─${R}${LINE2A}"
+        echo -e "${FG_GRAY}╰─${R}${LINE2B}"
+    else
+        echo -e "${FG_GRAY}╭─${R} ${LINE1A}"
+        echo -e "${FG_GRAY}├─${R} ${LINE1B}"
+        echo -e "${FG_GRAY}╰─${R}${LINE2A}"
+    fi
 fi
 
 for qLine in "${quota_lines[@]}"; do
