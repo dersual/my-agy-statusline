@@ -1,52 +1,106 @@
-# Unified Cross-Platform AGY Statusline
+# my-agy-statusline
 
-A customizable, dynamic, and adaptive statusline for the Google Antigravity CLI (`agy`). It merges the rolling quota tracking of `Ranteck/agy-statusline` with the rich agent metrics, state indicators, and automatic layout adaptability of the official `antigravity-cli` example.
+A statusline for the [Google Antigravity CLI](https://github.com/google-antigravity/antigravity-cli) (`agy`). It combines the rolling quota tracking from [Ranteck/agy-statusline](https://github.com/Ranteck/agy-statusline) with the agent metrics and state indicators from the [official example](https://github.com/google-antigravity/antigravity-cli/tree/main/examples/statusline), then adds a few things neither has: responsive layout tiers, smart auto-hiding, and plan tier display.
 
-Designed using **SOLID principles**, it operates with **zero external language runtimes** (no Python or Node.js required) by providing native shell scripts for all major operating systems.
+No Python, no Node. Just a PowerShell script on Windows and a bash script everywhere else.
 
 ---
 
-## Features
+## Screenshots
 
-1. **Fully Adaptive Terminal Width Layout**:
-   - **Wide Terminals (`>= 120` columns)**: Combines all details, state badges, context window size, and active metrics on a single sleek line, with quota tracking below.
-   - **Medium Terminals (`>= 80` columns)**: Formats metrics in a bordered box layout.
-   - **Narrow Terminals (`< 80` columns)**: Arranges elements in a compact, multi-line vertical stack to avoid text wrapping.
+> **To capture these:** open a terminal at the width shown, run `agy`, and screenshot the prompt.
 
-2. **Real-time Rolling Quota Tracking**:
-   - Displays rolling 5-hour and weekly (7-day) quotas with visual progress bars.
-   - Automatically detects the active model pool (`claude` vs. `gemini`) and renders the correct quota.
-   - Computes reset times in your local timezone.
+**Wide terminal (>= 120 columns):** everything on one line.
 
-3. **Smart Auto-Hiding (Zero-Noise)**:
-   - Elements like `artifacts`, `subagents`, and background `tasks` are automatically hidden when their count is `0`. They dynamically appear as soon as they become active.
+<!-- screenshot: wide layout -->
+<!-- terminal width: 120+ columns, any active session -->
 
-4. **100% Configurable**:
-   - Customize behavior via a simple `~/.gemini/statusline.json` file. No script editing is required.
+**Medium terminal (>= 100 columns):** two-line box layout.
+
+<!-- screenshot: medium layout -->
+<!-- terminal width: 100–119 columns, any active session -->
+
+**Narrow terminal (< 100 columns):** four-line split layout.
+
+<!-- screenshot: narrow layout -->
+<!-- terminal width: 70–99 columns, active session with artifacts/subagents -->
+
+**Tool use state:**
+
+<!-- screenshot: tool_use state -->
+<!-- trigger: start a session and use any tool -->
+
+---
+
+## Layouts
+
+The script reads `terminal_width` from the agy payload and picks a layout automatically.
+
+**Wide (>= 120 cols)**
+```
+⚙ WORKING / Gemini 2.5 Pro / my-project (main*)  │  ctx ████░·········· 30.0% · artifacts 2 · subagents 1
+plan: Google AI Pro
+gemini 5h ●●●○○○○○○○  28%  ⟳ 18:00
+gemini 7d ●●○○○○○○○○  15%  ⟳ jul 11, 08:00
+```
+
+**Medium (>= 100 cols)**
+```
+╭─ ⚙ WORKING / Gemini 2.5 Pro / my-project (main*)
+╰─ ctx ████░·········· 30.0% · artifacts 2 · subagents 1
+plan: Google AI Pro
+gemini 5h ●●●○○○○○○○  28%  ⟳ 18:00
+gemini 7d ●●○○○○○○○○  15%  ⟳ jul 11, 08:00
+```
+
+**Narrow (< 100 cols)**
+```
+╭─ ⚙ WORKING / Gemini 2.5 Pro
+├─ my-project (main*)
+├─ ctx ████░·········· 30.0%
+╰─ artifacts 2 · subagents 1 · tasks 0 · sandbox ON
+plan: Google AI Pro
+gemini 5h ●●●○○○○○○○  28%  ⟳ 18:00
+gemini 7d ●●○○○○○○○○  15%  ⟳ jul 11, 08:00
+```
+
+---
+
+## State indicators
+
+| State | Badge |
+|---|---|
+| idle | `● READY` |
+| thinking | `◆ THINKING` |
+| working | `⚙ WORKING` |
+| tool use | `🔧 TOOL` |
+| other | `⏳ <STATE>` |
 
 ---
 
 ## Installation
 
-### For Windows (PowerShell)
-1. Open PowerShell and run the installer script:
-   ```powershell
-   powershell -NoProfile -File ./bin/install.ps1
-   ```
-   *This will copy the script to `~/.gemini/statusline.ps1` and configure your `~/.gemini/antigravity-cli/settings.json` to run it.*
+**Windows (PowerShell)**
 
-### For macOS & Linux (Bash)
-1. Open your terminal and run the installer script:
-   ```bash
-   bash ./bin/install.sh
-   ```
-   *This will copy the script to `~/.gemini/statusline.sh` and update your `~/.gemini/antigravity-cli/settings.json`.*
+```powershell
+powershell -NoProfile -File ./bin/install.ps1
+```
+
+Copies the script to `~/.gemini/statusline.ps1` and updates `~/.gemini/antigravity-cli/settings.json`.
+
+**macOS / Linux (bash)**
+
+```bash
+bash ./bin/install.sh
+```
+
+Copies the script to `~/.gemini/statusline.sh` and updates `~/.gemini/antigravity-cli/settings.json`.
 
 ---
 
 ## Configuration
 
-An optional configuration file is supported at `~/.gemini/statusline.json`. You can create or edit this file to toggle specific features:
+Optional. Create `~/.gemini/statusline.json` to override defaults:
 
 ```json
 {
@@ -57,16 +111,27 @@ An optional configuration file is supported at `~/.gemini/statusline.json`. You 
 }
 ```
 
-### Options:
-* **`show_quota`** (`true`/`false`): Toggle 5-hour and weekly quota progress bars.
-* **`show_additional_stats`** (`true`/`false`): Master toggle for artifacts, subagents, background tasks, and sandbox status.
-* **`hide_zero_stats`** (`true`/`false`): When `true`, hides metrics whose count is `0`.
-* **`show_state_indicator`** (`true`/`false`): Toggle the state badge (e.g. `● READY`, `◆ THINKING`, `⚙ WORKING`).
+| Option | Default | What it does |
+|---|---|---|
+| `show_quota` | `true` | Show 5h and weekly quota bars |
+| `show_additional_stats` | `true` | Show artifacts, subagents, tasks, sandbox |
+| `hide_zero_stats` | `true` | Hide stats that are zero |
+| `show_state_indicator` | `true` | Show the state badge |
 
 ---
 
-## Technical Details & Dependencies
+## Dependencies
 
-* **Windows**: Works natively using built-in PowerShell 5.1+ and `.NET` assemblies. Zero dependencies.
-* **macOS & Linux**: Uses `bash` and `jq` (required). Handles date conversions automatically for both GNU `date` (Linux) and BSD `date` (macOS).
-* **CI Testing**: Cross-platform correctness is validated on every push across Ubuntu, macOS, and Windows via GitHub Actions.
+| Platform | Requirements |
+|---|---|
+| Windows | PowerShell 5.1+, no external dependencies |
+| macOS / Linux | bash, jq |
+
+The `.sh` script handles both GNU `date` (Linux) and BSD `date` (macOS) for reset time formatting.
+
+---
+
+## Credits
+
+- [Ranteck/agy-statusline](https://github.com/Ranteck/agy-statusline) for the quota tracking approach
+- [antigravity-cli examples](https://github.com/google-antigravity/antigravity-cli/tree/main/examples/statusline) for the original statusline structure
