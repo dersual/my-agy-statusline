@@ -44,6 +44,14 @@ if (-not (Test-Path $configFile)) {
 }
 
 # 4. Update settings.json
+if ($destScript.Contains(" ")) {
+    $cmd = "powershell -NoProfile -File '$destScript'"
+} else {
+    $cmd = "powershell -NoProfile -File $destScript"
+}
+$jsonEscapedCmd = $cmd.Replace('\', '\\')
+$manualSnippet = "{`n  `"statusLine`": {`n    `"type`": `"command`",`n    `"command`": `"$jsonEscapedCmd`",`n    `"enabled`": true`n  }`n}"
+
 if (Test-Path $settingsFile) {
     try {
         $settingsJson = Get-Content $settingsFile -Raw
@@ -55,11 +63,7 @@ if (Test-Path $settingsFile) {
         }
 
         $settings.statusLine.type = "command"
-        if ($destScript.Contains(" ")) {
-            $settings.statusLine.command = "powershell -NoProfile -File '$destScript'"
-        } else {
-            $settings.statusLine.command = "powershell -NoProfile -File $destScript"
-        }
+        $settings.statusLine.command = $cmd
         $settings.statusLine.enabled = $true
 
         # Convert back to JSON and write to file
@@ -69,8 +73,11 @@ if (Test-Path $settingsFile) {
     } catch {
         Write-Warning "Could not update settings.json: $_"
         Write-Host "Please manually add this to your ${settingsFile}:" -ForegroundColor Yellow
-        Write-Host "{`n  `"statusLine`": {`n    `"type`": `"command`",`n    `"command`": `"powershell -NoProfile -File \`"$($destScript.Replace('\', '\\'))\`"`",`n    `"enabled`": true`n  }`n}" -ForegroundColor Cyan
+        Write-Host $manualSnippet -ForegroundColor Cyan
     }
 } else {
     Write-Warning "settings.json not found at ${settingsFile}. Please configure agy statusline manually."
+    Write-Host "Please manually add this to your ${settingsFile}:" -ForegroundColor Yellow
+    Write-Host $manualSnippet -ForegroundColor Cyan
 }
+
