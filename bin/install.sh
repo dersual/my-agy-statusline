@@ -43,18 +43,28 @@ else
 fi
 
 # 4. Update settings.json
+MANUAL_SNIPPET="{\n  \"statusLine\": {\n    \"type\": \"command\",\n    \"command\": \"$DEST_SCRIPT\",\n    \"enabled\": true\n  }\n}"
+
 if [ -f "$SETTINGS_FILE" ]; then
     if command -v jq &>/dev/null; then
         # Create temp file to avoid clobbering during stream read
         temp_settings=$(mktemp)
-        jq '.statusLine = {type: "command", command: "'"$DEST_SCRIPT"'", enabled: true}' "$SETTINGS_FILE" > "$temp_settings"
-        mv "$temp_settings" "$SETTINGS_FILE"
-        echo "Successfully updated settings.json statusLine configuration!"
+        if jq --arg cmd "$DEST_SCRIPT" '.statusLine = {type: "command", command: $cmd, enabled: true}' "$SETTINGS_FILE" > "$temp_settings"; then
+            mv "$temp_settings" "$SETTINGS_FILE"
+            echo "Successfully updated settings.json statusLine configuration!"
+        else
+            rm -f "$temp_settings"
+            echo "Warning: Failed to update $SETTINGS_FILE with jq."
+            echo "Please manually add the following configuration to $SETTINGS_FILE:"
+            echo -e "$MANUAL_SNIPPET"
+        fi
     else
         echo "Warning: jq is not installed. Could not update settings.json automatically."
         echo "Please manually add the following configuration to $SETTINGS_FILE:"
-        echo -e "{\n  \"statusLine\": {\n    \"type\": \"command\",\n    \"command\": \"$DEST_SCRIPT\",\n    \"enabled\": true\n  }\n}"
+        echo -e "$MANUAL_SNIPPET"
     fi
 else
     echo "Warning: settings.json not found at $SETTINGS_FILE. Please configure agy statusline manually."
+    echo "Please manually add the following configuration to $SETTINGS_FILE:"
+    echo -e "$MANUAL_SNIPPET"
 fi
