@@ -121,6 +121,18 @@ try {
     $planTier = if ($data.plan_tier) { $data.plan_tier.ToString() } else { "" }
     $cols = if ($null -ne $data.terminal_width) { [int](Get-SafeDouble $data.terminal_width 80) } else { 80 }
 
+    $Q_GEMINI_5H_REM = if ($data.quota -and $data.quota.'gemini-5h' -and $null -ne $data.quota.'gemini-5h'.remaining_fraction) { $data.quota.'gemini-5h'.remaining_fraction } else { $null }
+    $Q_GEMINI_5H_RES = if ($data.quota -and $data.quota.'gemini-5h' -and $null -ne $data.quota.'gemini-5h'.reset_time) { $data.quota.'gemini-5h'.reset_time } else { $null }
+    
+    $Q_GEMINI_WK_REM = if ($data.quota -and $data.quota.'gemini-weekly' -and $null -ne $data.quota.'gemini-weekly'.remaining_fraction) { $data.quota.'gemini-weekly'.remaining_fraction } else { $null }
+    $Q_GEMINI_WK_RES = if ($data.quota -and $data.quota.'gemini-weekly' -and $null -ne $data.quota.'gemini-weekly'.reset_time) { $data.quota.'gemini-weekly'.reset_time } else { $null }
+    
+    $Q_3P_5H_REM = if ($data.quota -and $data.quota.'3p-5h' -and $null -ne $data.quota.'3p-5h'.remaining_fraction) { $data.quota.'3p-5h'.remaining_fraction } else { $null }
+    $Q_3P_5H_RES = if ($data.quota -and $data.quota.'3p-5h' -and $null -ne $data.quota.'3p-5h'.reset_time) { $data.quota.'3p-5h'.reset_time } else { $null }
+    
+    $Q_3P_WK_REM = if ($data.quota -and $data.quota.'3p-weekly' -and $null -ne $data.quota.'3p-weekly'.remaining_fraction) { $data.quota.'3p-weekly'.remaining_fraction } else { $null }
+    $Q_3P_WK_RES = if ($data.quota -and $data.quota.'3p-weekly' -and $null -ne $data.quota.'3p-weekly'.reset_time) { $data.quota.'3p-weekly'.reset_time } else { $null }
+
     # Resolve CWD basename safely
     $cwd = if ($null -ne $data.cwd) { $data.cwd.ToString() } else { "" }
     if ([string]::IsNullOrEmpty($cwd) -or $cwd -eq "null") {
@@ -300,16 +312,22 @@ try {
             $quotaPool = "3p"
         }
 
-        $q5hKey = if ($quotaPool -eq "3p") { "3p-5h" } else { "gemini-5h" }
-        $qwkKey = if ($quotaPool -eq "3p") { "3p-weekly" } else { "gemini-weekly" }
         $poolLabel = if ($quotaPool -eq "3p") { "claude" } else { "gemini" }
 
+        if ($quotaPool -eq "3p") {
+            $quotaData5h = [PSCustomObject]@{ remaining_fraction = $Q_3P_5H_REM; reset_time = $Q_3P_5H_RES }
+            $quotaDataWk = [PSCustomObject]@{ remaining_fraction = $Q_3P_WK_REM; reset_time = $Q_3P_WK_RES }
+        } else {
+            $quotaData5h = [PSCustomObject]@{ remaining_fraction = $Q_GEMINI_5H_REM; reset_time = $Q_GEMINI_5H_RES }
+            $quotaDataWk = [PSCustomObject]@{ remaining_fraction = $Q_GEMINI_WK_REM; reset_time = $Q_GEMINI_WK_RES }
+        }
+
         # 5h Quota
-        $line5h = Get-QuotaLine -label "$poolLabel 5h" -quotaData $data.quota.$q5hKey -timeFormat "HH:mm"
+        $line5h = Get-QuotaLine -label "$poolLabel 5h" -quotaData $quotaData5h -timeFormat "HH:mm"
         if ($null -ne $line5h) { $quotaLines.Add($line5h) }
 
         # Weekly Quota
-        $lineWk = Get-QuotaLine -label "$poolLabel 7d" -quotaData $data.quota.$qwkKey -timeFormat "MMM d, HH:mm"
+        $lineWk = Get-QuotaLine -label "$poolLabel 7d" -quotaData $quotaDataWk -timeFormat "MMM d, HH:mm"
         if ($null -ne $lineWk) { $quotaLines.Add($lineWk) }
     }
 

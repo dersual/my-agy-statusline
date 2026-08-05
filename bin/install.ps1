@@ -49,8 +49,15 @@ if ($destScript.Contains(" ")) {
 } else {
     $cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File $destScript"
 }
+
 $jsonEscapedCmd = $cmd.Replace('\', '\\')
-$manualSnippet = "{`n  `"statusLine`": {`n    `"type`": `"command`",`n    `"command`": `"$jsonEscapedCmd`",`n    `"enabled`": true`n  }`n}"
+$manualSnippet = @"
+  "statusLine": {
+    "type": "command",
+    "command": "$jsonEscapedCmd",
+    "enabled": true
+  }
+"@
 
 if (Test-Path $settingsFile) {
     try {

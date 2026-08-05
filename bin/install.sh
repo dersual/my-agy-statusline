@@ -23,6 +23,10 @@ mkdir -p "$GEMINI_DIR"
 echo "Ensured directory exists: $GEMINI_DIR"
 
 # 2. Copy the script and make it executable
+if [ ! -f "$SCRIPT_DIR/statusline.sh" ]; then
+    echo "Error: statusline.sh not found in $SCRIPT_DIR"
+    exit 1
+fi
 cp "$SCRIPT_DIR/statusline.sh" "$DEST_SCRIPT"
 chmod +x "$DEST_SCRIPT"
 echo "Copied statusline.sh to: $DEST_SCRIPT"
@@ -43,28 +47,29 @@ else
 fi
 
 # 4. Update settings.json
-MANUAL_SNIPPET="{\n  \"statusLine\": {\n    \"type\": \"command\",\n    \"command\": \"$DEST_SCRIPT\",\n    \"enabled\": true\n  }\n}"
+read -r -d '' MANUAL_SNIPPET << EOF || true
+  "statusLine": {
+    "type": "command",
+    "command": "$DEST_SCRIPT",
+    "enabled": true
+  }
+EOF
 
 if [ -f "$SETTINGS_FILE" ]; then
-    if command -v jq &>/dev/null; then
-        # Create temp file to avoid clobbering during stream read
-        temp_settings=$(mktemp)
-        if jq --arg cmd "$DEST_SCRIPT" '.statusLine = {type: "command", command: $cmd, enabled: true}' "$SETTINGS_FILE" > "$temp_settings"; then
-            mv "$temp_settings" "$SETTINGS_FILE"
-            echo "Successfully updated settings.json statusLine configuration!"
-        else
-            rm -f "$temp_settings"
-            echo "Warning: Failed to update $SETTINGS_FILE with jq."
-            echo "Please manually add the following configuration to $SETTINGS_FILE:"
-            echo -e "$MANUAL_SNIPPET"
-        fi
+    # Create temp file to avoid clobbering during stream read
+    temp_settings=$(mktemp)
+    trap 'rm -f "$temp_settings"' EXIT
+    
+    if jq --arg cmd "$DEST_SCRIPT" '.statusLine = {type: "command", command: $cmd, enabled: true}' "$SETTINGS_FILE" > "$temp_settings"; then
+        mv "$temp_settings" "$SETTINGS_FILE"
+        echo "Successfully updated settings.json statusLine configuration!"
     else
-        echo "Warning: jq is not installed. Could not update settings.json automatically."
+        echo "Warning: Failed to update $SETTINGS_FILE with jq."
         echo "Please manually add the following configuration to $SETTINGS_FILE:"
-        echo -e "$MANUAL_SNIPPET"
+        echo "$MANUAL_SNIPPET"
     fi
 else
     echo "Warning: settings.json not found at $SETTINGS_FILE. Please configure agy statusline manually."
     echo "Please manually add the following configuration to $SETTINGS_FILE:"
-    echo -e "$MANUAL_SNIPPET"
+    echo "$MANUAL_SNIPPET"
 fi
