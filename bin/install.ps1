@@ -45,9 +45,9 @@ if (-not (Test-Path $configFile)) {
 
 # 4. Update settings.json
 if ($destScript.Contains(" ")) {
-    $cmd = "powershell -NoProfile -File '$destScript'"
+    $cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File '$destScript'"
 } else {
-    $cmd = "powershell -NoProfile -File $destScript"
+    $cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File $destScript"
 }
 $jsonEscapedCmd = $cmd.Replace('\', '\\')
 $manualSnippet = "{`n  `"statusLine`": {`n    `"type`": `"command`",`n    `"command`": `"$jsonEscapedCmd`",`n    `"enabled`": true`n  }`n}"
