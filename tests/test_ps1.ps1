@@ -57,6 +57,10 @@ try {
     Run-Test "tool_use" $defaultConfig
     Run-Test "narrow_with_stats" $defaultConfig
 
+    # Test Case: Edge Cases (Data Contract)
+    Run-Test "empty" $defaultConfig
+    Run-Test "malformed" $defaultConfig
+
     # Test Case 2: Show all zero stats
     $showZeroConfig = @{
         show_quota = $true

@@ -58,6 +58,10 @@ run_test "active_working" true true true true
 run_test "claude_quota" true true true true
 run_test "gemini_quota" true true true true
 
+# Test Case: Edge Cases (Data Contract)
+run_test "empty" true true true true
+run_test "malformed" true true true true
+
 # Test Case 2: Show all zero stats
 run_test "idle" true true false true
 
