@@ -1,6 +1,9 @@
 #!/bin/bash
 set -f
 
+# ─── Ensure graceful failure ──────────────────────────────────────────────────
+trap 'printf "agy\n"; exit 0' ERR
+
 # ─── Read Stdin ─────────────────────────────────────────────────────────────
 input=$(cat)
 if [ -z "$input" ]; then
@@ -34,26 +37,26 @@ fi
 } <<< "$(
   jq -r '
     (.agent_state // "idle"),
-    (.context_window.used_percentage // 0),
-    (.vcs.branch // ""),
-    (.vcs.dirty // false),
-    (.sandbox.enabled // false),
+    (.context_window?.used_percentage? // 0),
+    (.vcs?.branch? // ""),
+    (.vcs?.dirty? // false),
+    (.sandbox?.enabled? // false),
     (.artifact_count // 0),
-    (if .subagents | type == "array" then (.subagents | length) else 0 end),
+    (if (.subagents | type) == "array" then (.subagents | length) else 0 end),
     (.task_count // 0),
-    (.model.display_name // ""),
-    (.model.id // ""),
+    (.model?.display_name? // ""),
+    (.model?.id? // ""),
     (.plan_tier // ""),
     (.terminal_width // 80),
     (.cwd // ""),
-    (.quota["3p-5h"].remaining_fraction // "null"),
-    (.quota["3p-5h"].reset_time // "null"),
-    (.quota["3p-weekly"].remaining_fraction // "null"),
-    (.quota["3p-weekly"].reset_time // "null"),
-    (.quota["gemini-5h"].remaining_fraction // "null"),
-    (.quota["gemini-5h"].reset_time // "null"),
-    (.quota["gemini-weekly"].remaining_fraction // "null"),
-    (.quota["gemini-weekly"].reset_time // "null")
+    (.quota?["3p-5h"]?.remaining_fraction? // "null"),
+    (.quota?["3p-5h"]?.reset_time? // "null"),
+    (.quota?["3p-weekly"]?.remaining_fraction? // "null"),
+    (.quota?["3p-weekly"]?.reset_time? // "null"),
+    (.quota?["gemini-5h"]?.remaining_fraction? // "null"),
+    (.quota?["gemini-5h"]?.reset_time? // "null"),
+    (.quota?["gemini-weekly"]?.remaining_fraction? // "null"),
+    (.quota?["gemini-weekly"]?.reset_time? // "null")
   ' <<< "$input" 2>/dev/null || printf "idle\n0\n\nfalse\nfalse\n0\n0\n0\n\n\n\n80\n\nnull\nnull\nnull\nnull\nnull\nnull\nnull\nnull\n"
 )"
 
@@ -204,11 +207,11 @@ format_quota_line() {
     fi
 
     local pct
-    pct=$(echo "$rem" | awk '{printf "%.0f", (1 - $1) * 100}' 2>/dev/null || echo 0)
+    pct=$(LC_NUMERIC=C echo "$rem" | awk '{printf "%.0f", (1 - $1) * 100}' 2>/dev/null || echo 0)
     local qBar
     qBar=$(build_quota_bar "$pct" "$CONFIG_BAR_LEN_QUOTA")
     local pct_fmt
-    pct_fmt=$(printf "%3d" "$pct")
+    pct_fmt=$(LC_NUMERIC=C printf "%3d" "$pct")
     local reset_fmt
     reset_fmt=$(format_reset_time "$reset" "$style")
     local pColor
@@ -257,7 +260,7 @@ for ((i=0; i<${#parts[@]}; i++)); do
 done
 
 # ─── LINE 2: Context Bar & Stats ─────────────────────────────────────────────
-PCT_INT=$(printf "%.0f" "$USED_PCT" 2>/dev/null || echo 0)
+PCT_INT=$(LC_NUMERIC=C printf "%.0f" "$USED_PCT" 2>/dev/null || echo 0)
 FILLED=$(( (PCT_INT * CONFIG_BAR_LEN_CTX) / 100 ))
 REMAINDER=$(( (PCT_INT * CONFIG_BAR_LEN_CTX) % 100 ))
 
@@ -284,7 +287,7 @@ for ((i=0; i<CONFIG_BAR_LEN_CTX; i++)); do
     fi
 done
 
-PCT_FMT=$(printf "%.1f" "$USED_PCT" 2>/dev/null || echo "0.0")
+PCT_FMT=$(LC_NUMERIC=C printf "%.1f" "$USED_PCT" 2>/dev/null || echo "0.0")
 CTX="${FG_GRAY}ctx ${BAR_COLOR}${BAR} ${NUM_COLOR}${PCT_FMT}%${R}"
 
 stat_parts=()
