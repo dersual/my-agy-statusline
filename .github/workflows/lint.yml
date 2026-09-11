@@ -1,0 +1,42 @@
+name: Lint and Format Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install shfmt
+        run: |
+          SHFMT_VERSION="v3.14.0"
+          curl -sSLo /usr/local/bin/shfmt "https://github.com/mvdan/sh/releases/download/${SHFMT_VERSION}/shfmt_${SHFMT_VERSION}_linux_amd64"
+          chmod +x /usr/local/bin/shfmt
+          shfmt --version
+
+      - name: Verify ShellCheck
+        run: shellcheck --version
+
+      - name: Lint and Format Check Bash
+        run: |
+          chmod +x tasks/lint.sh tasks/format.sh
+          bash tasks/lint.sh
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+          Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
+
+      - name: Lint PowerShell
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File tasks/lint.ps1
