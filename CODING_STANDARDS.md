@@ -9,6 +9,7 @@ Engineering conventions and quality standards for this codebase. Automated tooli
 - **File & Module Scope:** Keep scripts focused and manageable. Break helper scripts or distinct phases into clear, cohesive responsibilities.
 - **Canonical Layering:** Separate input parsing (reading JSON payload from stdin and user config from disk), layout selection, and terminal string formatting/rendering.
 - **Contract & Alias Stability:** Maintain behavioral parity between `statusline.ps1` and `statusline.sh`. Preserve configuration keys (`~/.gemini/statusline.json`) and CLI argument behavior without breaking changes.
+- **Automated Syntax & Formatting:** Formatting is automated across both languages via `tasks/format.*` using uniform 4-space indentation (`shfmt -i 4 -ci` and `Invoke-Formatter`). Static analysis is enforced via `tasks/lint.*` (`shellcheck` and `PSScriptAnalyzer`).
 
 ## 2. Types & Invariants
 

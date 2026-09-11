@@ -88,3 +88,10 @@ Issues are tracked in GitHub Issues (`gh` CLI). See `docs/agents/issue-tracker.m
 
 Single-context layout (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 
+### Quality Gates
+
+Before opening PRs or concluding tasks, run the native task runners:
+- **Bash**: Format via `tasks/format.sh` and lint via `tasks/lint.sh`.
+- **PowerShell**: Format via `tasks/format.ps1` and lint via `tasks/lint.ps1`.
+CI strictly validates that no formatting diffs or lint diagnostics remain.
+
