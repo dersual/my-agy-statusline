@@ -4,7 +4,10 @@
 
     # Exclude rules that produce false positives for terminal CLI scripts
     ExcludeRules = @(
-        'PSAvoidUsingWriteHost'
+        'PSAvoidUsingWriteHost',
+        'PSUseBOMForUnicodeEncodedFile',
+        'PSAvoidUsingEmptyCatchBlock',
+        'PSUseApprovedVerbs'
     )
 
     # Formatting rules

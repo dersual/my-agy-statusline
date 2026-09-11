@@ -34,7 +34,7 @@ run_test() {
     echo -e "\n\033[36m[TEST] $fixture_name | Config: show_quota=$show_quota, show_additional_stats=$show_additional_stats, hide_zero_stats=$hide_zero_stats, show_state_indicator=$show_state_indicator\033[0m"
 
     mkdir -p "$(dirname "$CONFIG_PATH")"
-    cat <<EOF > "$CONFIG_PATH"
+    cat <<EOF >"$CONFIG_PATH"
 {
   "show_quota": $show_quota,
   "show_additional_stats": $show_additional_stats,

@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path "$PSScriptRoot/..").Path
 $SettingsPath = Join-Path $RepoRoot "PSScriptAnalyzerSettings.psd1"
 
-Write-Host "─── Linting PowerShell scripts (PSScriptAnalyzer) ───"
+Write-Host "--- Linting PowerShell scripts (PSScriptAnalyzer) ---"
 
 $targets = @("bin", "tasks", "tests") | ForEach-Object {
     $dir = Join-Path $RepoRoot $_
@@ -31,5 +31,5 @@ if ($issues) {
     }
 }
 
-Write-Host "✓ All PowerShell scripts passed lint checks." -ForegroundColor Green
+Write-Host "All PowerShell scripts passed lint checks." -ForegroundColor Green
 exit 0

@@ -5,7 +5,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-echo "─── Linting Bash scripts (ShellCheck) ───"
+echo "--- Linting Bash scripts (ShellCheck) ---"
 files=()
 while IFS= read -r -d '' file; do
     files+=("$file")
@@ -18,7 +18,7 @@ fi
 
 shellcheck "${files[@]}"
 
-echo "─── Checking Bash formatting (shfmt) ───"
+echo "--- Checking Bash formatting (shfmt) ---"
 shfmt -d -i 4 -ci "${files[@]}"
 
-echo "✓ All Bash scripts passed linting and format checks."
+echo "All Bash scripts passed linting and format checks."

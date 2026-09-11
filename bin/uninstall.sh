@@ -14,7 +14,7 @@ echo "Uninstalling Unified AGY Statusline..."
 if [ -f "$SETTINGS_FILE" ]; then
     if command -v jq &>/dev/null; then
         temp_settings=$(mktemp)
-        jq '.statusLine = {type: "", command: "", enabled: false}' "$SETTINGS_FILE" > "$temp_settings"
+        jq '.statusLine = {type: "", command: "", enabled: false}' "$SETTINGS_FILE" >"$temp_settings"
         mv "$temp_settings" "$SETTINGS_FILE"
         echo "Reverted settings.json statusLine configuration."
     else

@@ -7,35 +7,35 @@ try {
     try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
     # ─── Define Unicode Characters via Hex Codes (PowerShell 5.1 Safe) ───────────
-    $charCircleFull  = [char]0x25cf
+    $charCircleFull = [char]0x25cf
     $charCircleEmpty = [char]0x25cb
-    $charDiamond     = [char]0x25c6
-    $charGear        = [char]0x2699
-    $charWrench      = [char]::ConvertFromUtf32(0x1F527) # 🔧
-    $charHourglass   = [char]0x231b
-    $charBlockFull   = [char]0x2588
-    $charBlockDark   = [char]0x2593
-    $charBlockMed    = [char]0x2592
-    $charBlockLight  = [char]0x2591
-    $charDot         = [char]0x00b7
-    $charSlash       = [char]0x002f
-    $charPipe        = [char]0x2502  # box vertical pipe
-    $charCornerTop   = [char]0x256d  # box corner top-left
-    $charLine        = [char]0x2500  # box horizontal line
-    $charCornerBot   = [char]0x2570  # box corner bottom-left
-    $charJoin        = [char]0x251c  # box T-junction left
-    $charReset       = [char]0x27f3
+    $charDiamond = [char]0x25c6
+    $charGear = [char]0x2699
+    $charWrench = [char]::ConvertFromUtf32(0x1F527) # 🔧
+    $charHourglass = [char]0x231b
+    $charBlockFull = [char]0x2588
+    $charBlockDark = [char]0x2593
+    $charBlockMed = [char]0x2592
+    $charBlockLight = [char]0x2591
+    $charDot = [char]0x00b7
+    $charSlash = [char]0x002f
+    $charPipe = [char]0x2502  # box vertical pipe
+    $charCornerTop = [char]0x256d  # box corner top-left
+    $charLine = [char]0x2500  # box horizontal line
+    $charCornerBot = [char]0x2570  # box corner bottom-left
+    $charJoin = [char]0x251c  # box T-junction left
+    $charReset = [char]0x27f3
 
     # ─── Configuration Constants ──────────────────────────────────────────────────
     $CONFIG_LAYOUT_WIDE_COLS = 120
-    $CONFIG_LAYOUT_MED_COLS  = 100
-    $CONFIG_BAR_LEN_CTX      = 15
-    $CONFIG_BAR_LEN_QUOTA    = 10
-    $CONFIG_CTX_WARN_PCT     = 60
-    $CONFIG_CTX_CRIT_PCT     = 90
-    $CONFIG_QUOTA_INFO_PCT   = 50
-    $CONFIG_QUOTA_WARN_PCT   = 70
-    $CONFIG_QUOTA_CRIT_PCT   = 90
+    $CONFIG_LAYOUT_MED_COLS = 100
+    $CONFIG_BAR_LEN_CTX = 15
+    $CONFIG_BAR_LEN_QUOTA = 10
+    $CONFIG_CTX_WARN_PCT = 60
+    $CONFIG_CTX_CRIT_PCT = 90
+    $CONFIG_QUOTA_INFO_PCT = 50
+    $CONFIG_QUOTA_WARN_PCT = 70
+    $CONFIG_QUOTA_CRIT_PCT = 90
 
     # ─── Helper Functions ─────────────────────────────────────────────────────────
     function Get-SafeDouble {
@@ -164,11 +164,11 @@ try {
     $agentStateBadge = ""
     if ($config.show_state_indicator) {
         switch ($state) {
-            "idle"     { $agentStateBadge = "$FG_BRIGHT_GREEN$B$charCircleFull READY$R" }
+            "idle" { $agentStateBadge = "$FG_BRIGHT_GREEN$B$charCircleFull READY$R" }
             "thinking" { $agentStateBadge = "$FG_BRIGHT_YELLOW$B$charDiamond THINKING$R" }
-            "working"  { $agentStateBadge = "$FG_BRIGHT_CYAN$B$charGear WORKING$R" }
+            "working" { $agentStateBadge = "$FG_BRIGHT_CYAN$B$charGear WORKING$R" }
             "tool_use" { $agentStateBadge = "$FG_BRIGHT_MAGENTA$B$charWrench TOOL$R" }
-            default    { $agentStateBadge = "$FG_WHITE$B$charHourglass $($state.ToUpper())$R" }
+            default { $agentStateBadge = "$FG_WHITE$B$charHourglass $($state.ToUpper())$R" }
         }
     }
 
@@ -248,8 +248,8 @@ try {
     function Get-QuotaColor {
         param([int]$pct)
         if ($pct -ge $CONFIG_QUOTA_CRIT_PCT) { return $FG_BRIGHT_RED }
-        if ($pct -ge $CONFIG_QUOTA_WARN_PCT)  { return $FG_BRIGHT_YELLOW }
-        if ($pct -ge $CONFIG_QUOTA_INFO_PCT)  { return $FG_BRIGHT_CYAN }
+        if ($pct -ge $CONFIG_QUOTA_WARN_PCT) { return $FG_BRIGHT_YELLOW }
+        if ($pct -ge $CONFIG_QUOTA_INFO_PCT) { return $FG_BRIGHT_CYAN }
         return $FG_BRIGHT_GREEN
     }
 
