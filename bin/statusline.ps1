@@ -88,13 +88,12 @@ try {
     $esc = [char]27
     $R = "$esc[0m"          # Reset
     $B = "$esc[1m"          # Bold
-    $D = "$esc[2m"          # Dim
     $I = "$esc[3m"          # Italic
-
-    $FG_GREEN = "$esc[32m"
-    $FG_YELLOW = "$esc[33m"
-    $FG_CYAN = "$esc[36m"
-    $FG_MAGENTA = "$esc[35m"
+    # $D = "$esc[2m"          # Dim (uncomment for custom theming)
+    # $FG_GREEN = "$esc[32m"
+    # $FG_YELLOW = "$esc[33m"
+    # $FG_CYAN = "$esc[36m"
+    # $FG_MAGENTA = "$esc[35m"
     $FG_WHITE = "$esc[37m"
     $FG_GRAY = "$esc[90m"
     $FG_BRIGHT_RED = "$esc[91m"
@@ -123,13 +122,13 @@ try {
 
     $Q_GEMINI_5H_REM = if ($data.quota -and $data.quota.'gemini-5h' -and $null -ne $data.quota.'gemini-5h'.remaining_fraction) { $data.quota.'gemini-5h'.remaining_fraction } else { $null }
     $Q_GEMINI_5H_RES = if ($data.quota -and $data.quota.'gemini-5h' -and $null -ne $data.quota.'gemini-5h'.reset_time) { $data.quota.'gemini-5h'.reset_time } else { $null }
-    
+
     $Q_GEMINI_WK_REM = if ($data.quota -and $data.quota.'gemini-weekly' -and $null -ne $data.quota.'gemini-weekly'.remaining_fraction) { $data.quota.'gemini-weekly'.remaining_fraction } else { $null }
     $Q_GEMINI_WK_RES = if ($data.quota -and $data.quota.'gemini-weekly' -and $null -ne $data.quota.'gemini-weekly'.reset_time) { $data.quota.'gemini-weekly'.reset_time } else { $null }
-    
+
     $Q_3P_5H_REM = if ($data.quota -and $data.quota.'3p-5h' -and $null -ne $data.quota.'3p-5h'.remaining_fraction) { $data.quota.'3p-5h'.remaining_fraction } else { $null }
     $Q_3P_5H_RES = if ($data.quota -and $data.quota.'3p-5h' -and $null -ne $data.quota.'3p-5h'.reset_time) { $data.quota.'3p-5h'.reset_time } else { $null }
-    
+
     $Q_3P_WK_REM = if ($data.quota -and $data.quota.'3p-weekly' -and $null -ne $data.quota.'3p-weekly'.remaining_fraction) { $data.quota.'3p-weekly'.remaining_fraction } else { $null }
     $Q_3P_WK_RES = if ($data.quota -and $data.quota.'3p-weekly' -and $null -ne $data.quota.'3p-weekly'.reset_time) { $data.quota.'3p-weekly'.reset_time } else { $null }
 
@@ -349,10 +348,10 @@ try {
         if (-not [string]::IsNullOrEmpty($agentStateBadge)) { $parts1A.Add($agentStateBadge) }
         if (-not [string]::IsNullOrEmpty($modelDisplayName)) { $parts1A.Add("$FG_BRIGHT_MAGENTA$I$modelDisplayName$R") }
         $LINE1A = [string]::Join("$FG_GRAY $charSlash $R", $parts1A)
-        
+
         $LINE1B = $gitDirStatusBadge
         $LINE2A = " $contextBarBadge"
-        
+
         $statsOnly = $statParts | Select-Object -Skip 1
         if (($statsOnly | Measure-Object).Count -gt 0) {
             $LINE2B = " " + [string]::Join("$FG_GRAY $charDot $R", $statsOnly)

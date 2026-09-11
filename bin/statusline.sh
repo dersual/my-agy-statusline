@@ -91,13 +91,12 @@ fi
 # ─── ANSI Colors & Formatting (Standard 16 colors) ───────────────────────────
 R="\033[0m" # Reset
 B="\033[1m" # Bold
-D="\033[2m" # Dim
 I="\033[3m" # Italic
-
-FG_GREEN="\033[32m"
-FG_YELLOW="\033[33m"
-FG_CYAN="\033[36m"
-FG_MAGENTA="\033[35m"
+# D="\033[2m"         # Dim (uncomment for custom theming)
+# FG_GREEN="\033[32m"
+# FG_YELLOW="\033[33m"
+# FG_CYAN="\033[36m"
+# FG_MAGENTA="\033[35m"
 FG_WHITE="\033[37m"
 FG_GRAY="\033[90m"
 FG_BRIGHT_RED="\033[91m"
@@ -176,7 +175,8 @@ format_reset_time() {
         epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$reset_iso" +%s 2>/dev/null)
     elif date -j -f "%Y-%m-%dT%H:%M:%S%z" "$reset_iso" +%s >/dev/null 2>&1; then
         local clean_iso
-        clean_iso=$(echo "$reset_iso" | sed 's/\([+-][0-9][0-9]\):\([0-9][0-9]\)/\1\2/')
+        # Strip colon from ISO-8601 offset for BSD date (%z requires no colon)
+        clean_iso="${reset_iso%:*}${reset_iso##*:}"
         epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$clean_iso" +%s 2>/dev/null)
     fi
 
