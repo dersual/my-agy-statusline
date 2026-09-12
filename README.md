@@ -139,8 +139,8 @@ Run the task scripts to check or format code before opening a pull request. You 
 **Bash scripts:**
 
 ```bash
-./tasks/lint.sh      # Run ShellCheck and check formatting
 ./tasks/format.sh    # Format Bash scripts with shfmt
+./tasks/lint.sh      # Run ShellCheck and check formatting
 ```
 
 **Tool installation:**
@@ -152,8 +152,8 @@ Run the task scripts to check or format code before opening a pull request. You 
 Requires PowerShell (`pwsh`) and the PSScriptAnalyzer module (`Install-Module PSScriptAnalyzer`).
 
 ```bash
-pwsh ./tasks/lint.ps1
 pwsh ./tasks/format.ps1
+pwsh ./tasks/lint.ps1
 ```
 
 ### On Windows
@@ -161,8 +161,15 @@ pwsh ./tasks/format.ps1
 **PowerShell scripts:**
 
 ```powershell
-./tasks/lint.ps1      # Run PSScriptAnalyzer
 ./tasks/format.ps1    # Format PowerShell scripts
+./tasks/lint.ps1      # Run PSScriptAnalyzer
+```
+
+If running from Git Bash or another terminal inside VS Code on Windows, prefix with `powershell -File` so Bash does not attempt to interpret the `.ps1` file directly:
+
+```bash
+powershell -File tasks/format.ps1
+powershell -File tasks/lint.ps1
 ```
 
 **Tool installation:**
@@ -179,8 +186,8 @@ winget install koalaman.shellcheck mvdan.shfmt
 ```
 
 ```bash
-./tasks/lint.sh
 ./tasks/format.sh
+./tasks/lint.sh
 ```
 
 GitHub Actions runs these lint and format checks on every push and pull request.
