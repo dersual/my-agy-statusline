@@ -1,10 +1,9 @@
-# Lint PowerShell scripts using PSScriptAnalyzer
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path "$PSScriptRoot/..").Path
 $SettingsPath = Join-Path $RepoRoot "PSScriptAnalyzerSettings.psd1"
 
-Write-Host "--- Linting PowerShell scripts (PSScriptAnalyzer) ---"
+Write-Output "--- Linting PowerShell scripts (PSScriptAnalyzer) ---"
 
 $targets = @("bin", "tasks", "tests") | ForEach-Object {
     $dir = Join-Path $RepoRoot $_
@@ -14,7 +13,7 @@ $targets = @("bin", "tasks", "tests") | ForEach-Object {
 }
 
 if (-not $targets -or $targets.Count -eq 0) {
-    Write-Host "No .ps1 files found to lint."
+    Write-Output "No .ps1 files found to lint."
     exit 0
 }
 
@@ -31,5 +30,5 @@ if ($issues) {
     }
 }
 
-Write-Host "All PowerShell scripts passed lint checks." -ForegroundColor Green
+Write-Output "All PowerShell scripts passed lint checks."
 exit 0
