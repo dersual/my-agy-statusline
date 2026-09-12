@@ -49,7 +49,7 @@ EOF
         exit 1
     fi
 
-    cat "$fixture_path" | bash "$SCRIPT_PATH"
+    bash "$SCRIPT_PATH" <"$fixture_path"
 }
 
 # Test Case 1: Default Config
