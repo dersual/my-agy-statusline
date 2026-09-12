@@ -33,7 +33,7 @@ echo "Copied statusline.sh to: $DEST_SCRIPT"
 
 # 3. Create default configuration if not present
 if [ ! -f "$CONFIG_FILE" ]; then
-    cat <<EOF > "$CONFIG_FILE"
+    cat <<EOF >"$CONFIG_FILE"
 {
   "show_quota": true,
   "show_additional_stats": true,
@@ -47,7 +47,7 @@ else
 fi
 
 # 4. Update settings.json
-read -r -d '' MANUAL_SNIPPET << EOF || true
+read -r -d '' MANUAL_SNIPPET <<EOF || true
   "statusLine": {
     "type": "command",
     "command": "$DEST_SCRIPT",
@@ -59,8 +59,8 @@ if [ -f "$SETTINGS_FILE" ]; then
     # Create temp file to avoid clobbering during stream read
     temp_settings=$(mktemp)
     trap 'rm -f "$temp_settings"' EXIT
-    
-    if jq --arg cmd "$DEST_SCRIPT" '.statusLine = {type: "command", command: $cmd, enabled: true}' "$SETTINGS_FILE" > "$temp_settings"; then
+
+    if jq --arg cmd "$DEST_SCRIPT" '.statusLine = {type: "command", command: $cmd, enabled: true}' "$SETTINGS_FILE" >"$temp_settings"; then
         mv "$temp_settings" "$SETTINGS_FILE"
         echo "Successfully updated settings.json statusLine configuration!"
     else

@@ -57,13 +57,13 @@ gemini 7d ●●○○○○○○○○  19% ⟳ jul 7, 19:51
 
 ## State indicators
 
-| State | Badge |
-|---|---|
-| idle | `● READY` |
+| State    | Badge        |
+| -------- | ------------ |
+| idle     | `● READY`    |
 | thinking | `◆ THINKING` |
-| working | `⚙ WORKING` |
-| tool use | `🔧 TOOL` |
-| other | `⏳ <STATE>` |
+| working  | `⚙ WORKING` |
+| tool use | `🔧 TOOL`    |
+| other    | `⏳ <STATE>` |
 
 ![Tool use state](assets/tool-use-statusline.png)
 
@@ -103,34 +103,98 @@ Optional. Create `~/.gemini/statusline.json` to override defaults:
 
 ```json
 {
-  "show_quota": true,
-  "show_additional_stats": true,
-  "hide_zero_stats": true,
-  "show_state_indicator": true
+    "show_quota": true,
+    "show_additional_stats": true,
+    "hide_zero_stats": true,
+    "show_state_indicator": true
 }
 ```
 
-| Option | Default | What it does |
-|---|---|---|
-| `show_quota` | `true` | Show 5h and weekly quota bars |
-| `show_additional_stats` | `true` | Show artifacts, subagents, tasks, sandbox |
-| `hide_zero_stats` | `true` | Hide stats that are zero |
-| `show_state_indicator` | `true` | Show the state badge |
+| Option                  | Default | What it does                              |
+| ----------------------- | ------- | ----------------------------------------- |
+| `show_quota`            | `true`  | Show 5h and weekly quota bars             |
+| `show_additional_stats` | `true`  | Show artifacts, subagents, tasks, sandbox |
+| `hide_zero_stats`       | `true`  | Hide stats that are zero                  |
+| `show_state_indicator`  | `true`  | Show the state badge                      |
 
 ---
 
 ## Dependencies
 
-| Platform | Requirements |
-|---|---|
-| Windows | PowerShell 5.1+, no external dependencies |
-| macOS / Linux | bash, jq |
+| Platform      | Requirements                              |
+| ------------- | ----------------------------------------- |
+| Windows       | PowerShell 5.1+, no external dependencies |
+| macOS / Linux | bash, jq                                  |
 
 The `.sh` script handles both GNU `date` (Linux) and BSD `date` (macOS) for reset time formatting.
 
 ---
 
+## Development
+
+Run the task scripts to check or format code before opening a pull request. You only need to run the tools for the scripts you changed (for example, if you only touch `.sh` files, you do not need PowerShell or `.ps1` formatters). GitHub Actions validates both platforms automatically on every pull request.
+
+### On Linux / macOS
+
+**Bash scripts:**
+
+```bash
+./tasks/format.sh    # Format Bash scripts with shfmt
+./tasks/lint.sh      # Run ShellCheck and check formatting
+```
+
+**Tool installation:**
+
+-   macOS: `brew install shellcheck shfmt`
+-   Ubuntu / Debian: `sudo apt install shellcheck` (download `shfmt` from [github.com/mvdan/sh/releases](https://github.com/mvdan/sh/releases))
+
+**Optional: PowerShell scripts (if editing `.ps1` files):**
+Requires PowerShell (`pwsh`) and the PSScriptAnalyzer module (`Install-Module PSScriptAnalyzer`).
+
+```bash
+pwsh ./tasks/format.ps1
+pwsh ./tasks/lint.ps1
+```
+
+### On Windows
+
+**PowerShell scripts:**
+
+```powershell
+./tasks/format.ps1    # Format PowerShell scripts
+./tasks/lint.ps1      # Run PSScriptAnalyzer
+```
+
+If running from Git Bash or another terminal inside VS Code on Windows, prefix with `powershell -File` so Bash does not attempt to interpret the `.ps1` file directly:
+
+```bash
+powershell -File tasks/format.ps1
+powershell -File tasks/lint.ps1
+```
+
+**Tool installation:**
+
+```powershell
+Install-Module -Name PSScriptAnalyzer -Scope CurrentUser
+```
+
+**Optional: Bash scripts (if editing `.sh` files):**
+Install ShellCheck and shfmt via winget, then run from Git Bash:
+
+```powershell
+winget install koalaman.shellcheck mvdan.shfmt
+```
+
+```bash
+./tasks/format.sh
+./tasks/lint.sh
+```
+
+GitHub Actions runs these lint and format checks on every push and pull request.
+
+---
+
 ## Credits
 
-- [Ranteck/agy-statusline](https://github.com/Ranteck/agy-statusline) for the quota tracking approach
-- [antigravity-cli examples](https://github.com/google-antigravity/antigravity-cli/tree/main/examples/statusline) for the original statusline structure
+-   [Ranteck/agy-statusline](https://github.com/Ranteck/agy-statusline) for the quota tracking approach
+-   [antigravity-cli examples](https://github.com/google-antigravity/antigravity-cli/tree/main/examples/statusline) for the original statusline structure

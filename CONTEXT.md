@@ -7,7 +7,7 @@
 ## Architecture & Layout
 
 - `bin/`: Executable binaries and scripts.
-- `tasks/`: Task definitions and runners.
+- `tasks/`: Native task definitions and runners (linting, formatting).
 - `tests/`: Automated test suite.
 - `assets/`: Asset files and images.
 - `docs/adr/`: Architectural Decision Records (ADRs).

@@ -1,0 +1,4 @@
+# ShellCheck configuration file
+# https://github.com/koalaman/shellcheck/wiki
+
+shell=bash
